@@ -1,0 +1,43 @@
+name: Work item
+description: General task for this template or a project made from it.
+title: "[TASK]: "
+body:
+  - type: input
+    id: summary
+    attributes:
+      label: Summary line
+      description: One sentence describing the task.
+      placeholder: Add hand tracking controls to the XR prototype.
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: What project area, engine, or demo does this touch?
+      placeholder: Unity XR scene, input mapping, documentation.
+    validations:
+      required: true
+  - type: textarea
+    id: requirements
+    attributes:
+      label: Requirements
+      description: Include only the lines that matter.
+      placeholder: |
+        - Project / engine:
+        - Content / assets:
+        - Engineering:
+        - Testing:
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance Criteria
+      description: What must be true before this is done?
+      placeholder: |
+        - Works in the target editor version.
+        - Generated cache/build output is not committed.
+        - Manual test steps are documented.
+    validations:
+      required: true

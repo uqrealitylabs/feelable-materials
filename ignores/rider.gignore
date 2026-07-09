@@ -1,0 +1,7 @@
+# Rider ignore snippet.
+# Use for JetBrains local workspace state.
+# Do not ignore shared formatter or inspection config unless your team keeps it local.
+
+.idea/
+*.sln.iml
+*.DotSettings.user

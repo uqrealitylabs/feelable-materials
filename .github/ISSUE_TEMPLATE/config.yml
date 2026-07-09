@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security or private asset issue
+    url: https://github.com/uqrealitylabs/repo-template/security/advisories/new
+    about: Report secrets, licence files, paid assets, or exploit details privately.

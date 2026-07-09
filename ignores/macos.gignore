@@ -1,0 +1,10 @@
+# macOS ignore snippet.
+# Use for Finder and filesystem metadata.
+# Do not ignore project assets just because they were created on macOS.
+
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes

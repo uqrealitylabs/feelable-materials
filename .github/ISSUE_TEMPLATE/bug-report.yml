@@ -1,0 +1,76 @@
+name: Bug report
+description: Runtime, editor, or build bug.
+title: "[BUG]: "
+body:
+  - type: input
+    id: summary
+    attributes:
+      label: Summary line
+      description: One sentence describing the bug.
+      placeholder: Player camera jitters when entering VR play mode.
+    validations:
+      required: true
+  - type: input
+    id: engine
+    attributes:
+      label: Engine/tool
+      placeholder: Unity 6000.0 LTS, Unreal 5.4, Godot 4.3, Blender, WebXR
+    validations:
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: Platform
+      placeholder: Windows, macOS, Linux, Quest, iOS, Android, WebGL
+    validations:
+      required: true
+  - type: input
+    id: xr_runtime
+    attributes:
+      label: XR device/runtime
+      placeholder: Quest 3 with OpenXR, SteamVR, ARKit, ARCore, WebXR
+    validations:
+      required: false
+  - type: textarea
+    id: happened
+    attributes:
+      label: What happened
+      placeholder: Describe the visible failure, crash, editor warning, or build error.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+      placeholder: What should have happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open the project.
+        2. Start play mode.
+        3. Put on the headset.
+        4. See the issue.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs/screenshots
+      description: Link a short log or recording if it helps. Do not upload credentials, API tokens, exploit details, paid assets, licence files, private keys, or huge binaries.
+      placeholder: Paste short public logs here, or use SECURITY.md for sensitive details.
+    validations:
+      required: false
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance Criteria
+      placeholder: |
+        - Bug no longer reproduces.
+        - Fix is checked on the target platform.
+        - Relevant logs or test notes are attached.
+    validations:
+      required: true

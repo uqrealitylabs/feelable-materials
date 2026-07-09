@@ -1,0 +1,72 @@
+name: Engine setup
+description: Unity, Unreal, Godot, or toolchain setup issue.
+title: "[SETUP]: "
+body:
+  - type: input
+    id: summary
+    attributes:
+      label: Summary line
+      description: One sentence describing the setup problem.
+      placeholder: Godot export preset needs Android signing setup.
+    validations:
+      required: true
+  - type: dropdown
+    id: engine
+    attributes:
+      label: Engine
+      options:
+        - Unity
+        - Unreal
+        - Godot
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      placeholder: Unity 6000.0 LTS, Unreal 5.4, Godot 4.3
+    validations:
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: Target platform
+      placeholder: Quest, PC VR, Android, iOS, WebGL, desktop
+    validations:
+      required: true
+  - type: input
+    id: xr_runtime
+    attributes:
+      label: XR device/runtime
+      placeholder: Quest 3 with OpenXR, SteamVR, ARKit, ARCore, WebXR
+    validations:
+      required: false
+  - type: textarea
+    id: problem
+    attributes:
+      label: Setup problem
+      placeholder: What is missing, broken, unclear, or machine-specific?
+    validations:
+      required: true
+  - type: textarea
+    id: requirements
+    attributes:
+      label: Requirements
+      placeholder: |
+        - Engine modules/packages:
+        - SDKs or platform tools:
+        - Project settings:
+        - Documentation:
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance Criteria
+      placeholder: |
+        - Fresh clone opens in the stated engine version.
+        - Required SDK/setup steps are documented.
+        - Generated cache/build output is not committed.
+    validations:
+      required: true

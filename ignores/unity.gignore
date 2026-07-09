@@ -1,0 +1,56 @@
+# Unity ignore snippet.
+# Use for Unity projects after merging with any project-specific rules.
+# Do not ignore Assets, Packages, ProjectSettings, or .meta files globally.
+
+# Unity .meta files are usually project source and should be committed.
+
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Bb]uild/
+/[Bb]uilds/
+/[Ll]ogs/
+/[Uu]ser[Ss]ettings/
+.utmp/
+
+/[Mm]emoryCaptures/
+/[Rr]ecordings/
+
+.vs/
+.gradle/
+/[Aa]ssets/Plugins/Editor/JetBrains*
+
+ExportedObj/
+.consulo/
+*.csproj
+*.unityproj
+*.sln
+*.slnx
+*.suo
+*.tmp
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+
+*.pidb.meta
+*.pdb.meta
+*.mdb.meta
+sysinfo.txt
+mono_crash.*
+
+*.apk
+*.aab
+*.unitypackage
+*.unitypackage.meta
+*.app
+
+InitTestScene*.unity*
+/[Aa]ssets/[Ii]nit[Tt]est[Ss]cene*.unity*
+
+/[Aa]ssets/[Ss]ceneDependencyCache*
