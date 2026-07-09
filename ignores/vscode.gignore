@@ -1,9 +1,0 @@
-# VS Code ignore snippet.
-# Use when local workspace settings should stay local.
-# Do not ignore shared tasks or launch config if the team relies on them.
-
-.vscode/*
-!.vscode/extensions.json
-!.vscode/settings.example.json
-!.vscode/tasks.json
-!.vscode/launch.json

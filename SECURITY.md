@@ -1,15 +1,20 @@
-# Security
+# Security Policy
 
-Report secrets or credential leaks privately where possible. Use GitHub private vulnerability reporting if it is enabled: https://github.com/uqrealitylabs/repo-template/security/advisories/new
+## Reporting A Vulnerability
 
-If private reporting is unavailable, contact a maintainer directly before posting private keys, paid asset packages, licence files, signing keys, exploit details, or sensitive logs.
+Do not open a public issue for vulnerabilities or accidental credential exposure.
 
-Common files to keep out of Git:
+Report privately to the UQ Reality Labs maintainers. Include:
 
-- Unity cloud/build credentials
-- Unreal Marketplace or private plugin files
-- Godot `export_credentials.cfg`
-- keystores and signing keys
-- `.env`
-- API keys
-- paid asset-store packages
+- affected version or commit
+- reproduction steps
+- impact
+- whether credentials, private assets, or licensed files may be exposed
+
+## Package Scope
+
+This package should not contain secrets, paid assets, website credentials, screenshots, videos, generated build output, or social logo assets.
+
+## Maintainer Response
+
+Maintainers should acknowledge reports, assess impact, rotate exposed credentials if needed, and publish fixes or guidance when safe.

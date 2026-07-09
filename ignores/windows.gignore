@@ -1,9 +1,0 @@
-# Windows ignore snippet.
-# Use for Explorer and filesystem metadata.
-# Do not ignore source assets or project settings.
-
-Thumbs.db
-ehthumbs.db
-Desktop.ini
-$RECYCLE.BIN/
-*.lnk

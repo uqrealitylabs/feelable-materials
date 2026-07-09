@@ -1,29 +1,20 @@
-# Root ignore for the template repo.
-# Engine-specific templates live in ignores/<type>.gignore.
-# Copy the ones you need into your project .gitignore after choosing an engine.
-
-# OS junk
 .DS_Store
 Thumbs.db
 Desktop.ini
 
-# Editors
 .idea/
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.example.json
 !.vscode/tasks.json
 !.vscode/launch.json
-.vs/
 
-# Logs, temp, and caches
 *.log
 .cache/
 .temp/
 tmp/
 *.tmp
 
-# Local environment and secrets
 .env
 .env.*
 !.env.example
@@ -35,14 +26,15 @@ tmp/
 *.key
 *.mobileprovision
 
-# Common build/test output
 dist/
 out/
+build/
 coverage/
+artifacts/
+cypress/screenshots/
+cypress/videos/
 
-# Package/tool caches
 node_modules/
 .npm/
 .pnpm-store/
 .yarn/cache/
-.gradle/

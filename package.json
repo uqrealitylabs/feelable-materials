@@ -1,0 +1,68 @@
+{
+  "name": "@uqrealitylabs/feelable-materials",
+  "version": "0.1.0",
+  "description": "Tactile React Three Fiber material surfaces for cloth, rubber, glass, grass, and touchable logos.",
+  "type": "module",
+  "license": "GPL-3.0-only",
+  "packageManager": "npm@11.12.1",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./react": {
+      "types": "./dist/react.d.ts",
+      "import": "./dist/react.js"
+    }
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check .",
+    "format:check": "biome format .",
+    "test": "vitest run",
+    "prebuild": "rm -rf dist",
+    "build": "tsc -p tsconfig.build.json",
+    "prepare": "npm run build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/uqrealitylabs/feelable-materials.git"
+  },
+  "bugs": {
+    "url": "https://github.com/uqrealitylabs/feelable-materials/issues"
+  },
+  "homepage": "https://github.com/uqrealitylabs/feelable-materials#readme",
+  "keywords": [
+    "react-three-fiber",
+    "threejs",
+    "materials",
+    "webgl",
+    "interaction"
+  ],
+  "peerDependencies": {
+    "@react-three/fiber": ">=9 <10",
+    "react": ">=19 <20",
+    "three": ">=0.170 <1"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.3.7",
+    "@react-three/fiber": "^9.4.0",
+    "@types/node": "^24.10.3",
+    "@types/react": "^19.2.7",
+    "react": "^19.2.1",
+    "three": "^0.177.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.16"
+  },
+  "engines": {
+    "node": ">=20.19"
+  }
+}

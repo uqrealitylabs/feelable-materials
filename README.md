@@ -1,85 +1,118 @@
-# Unity / XR / Game Project Template
+# feelable-materials
 
-A starter repo for Unity, Unreal, Godot, XR builds, games, prototypes, and interactive demos.
+Tactile React Three Fiber material surfaces for cloth, rubber, glass, grass, and touchable logos.
 
-> [!NOTE]
-> This repo is a template. Delete anything that does not fit your project.
+## What It Is
 
-## What this is
+`@uqrealitylabs/feelable-materials` is a small interaction model and React Three Fiber component layer for pointer-local surfaces. It was extracted from the UQ Reality Labs social material cards and keeps the reusable parts: cloth creases, rubber mush, glass smudges, grass blade fields, mail/card bending, and a shared poke model.
 
-Use this as a clean starting point for interactive projects. It gives you practical issue templates, a pull request template, and reusable `.gitignore` snippets without adding engine project files.
+The internal idea is "materials actually": material labels should behave differently, not just swap colours.
 
-## When to use it
+## When To Use It
 
-Use it for class projects, club builds, research prototypes, game jams, XR demos, and small team projects that need a tidy repo from day one.
+Use it for small R3F cards, logos, or material swatches that need local pointer response.
 
-## Pick your engine
+Do not use it for full physics simulation, cloth solvers, production damage systems, or site-specific social link grids.
 
-| Engine | Start with | Notes |
-| --- | --- | --- |
-| Unity | `ignores/unity.gignore` | Track `Assets`, `Packages`, `ProjectSettings`, and `.meta` files. |
-| Unreal | `ignores/unreal.gignore` | Track `Config`, `Content`, `Source`, and `.uproject`. |
-| Godot | `ignores/godot.gignore` | Do not commit export credentials. |
-| Other | `ignores/common.gignore` | Add only the snippets that match your tools. |
-
-## Quick start
+## Install
 
 ```sh
-git clone <repo-url>
-cd <repo>
-cat ignores/common.gignore ignores/<engine>.gignore >> .gitignore
+npm install @uqrealitylabs/feelable-materials three @react-three/fiber
 ```
 
-Use the engine file you picked above, for example `ignores/unity.gignore`. Do not overwrite an existing project `.gitignore` blindly. Merge snippets intentionally.
+## Basic Example
 
-> [!TIP]
-> Start with the engine-specific ignore file, then add only the extras you actually need.
+```tsx
+import { FeelableMaterialCard } from "@uqrealitylabs/feelable-materials/react";
 
-## Ignore files
-
-The root `.gitignore` is conservative so the template repo stays clean. Reusable snippets live in [`ignores/`](ignores/README.md). Copy or merge the snippets that match your project, engine, platform, and editor.
-
-> [!IMPORTANT]
-> Unity `.meta` files are usually part of the project and should normally be committed.
-
-## Repo layout
-
-```text
-.github/ISSUE_TEMPLATE/  GitHub issue forms
-.github/PULL_REQUEST_TEMPLATE.md
-ignores/                 Reusable .gitignore snippets
-README.md
-CONTRIBUTING.md
-CODE_OF_CONDUCT.md
-SECURITY.md
+export function SocialCard() {
+  return (
+    <FeelableMaterialCard
+      material="grass"
+      ariaLabel="Community"
+      logo={<mesh />}
+      underline
+    />
+  );
+}
 ```
 
-## Asset rules
+> [!NOTE]
+> The package provides R3F-compatible components and pure model helpers. Apps still own their canvas, camera, lighting, labels, and links.
 
-Commit source assets that the team is allowed to share and needs to build the project. Keep generated builds, caches, recordings, private packages, and large exports out of Git unless the project has a clear storage plan.
+## Materials
+
+### Cloth
+
+Soft local crease, surface depression, and slow return.
+
+### Rubber
+
+Stronger inward mush, local bulge, and elastic rebound.
+
+### Glass
+
+Smudge/contact accumulation with fade over time and roughness-style response metadata.
+
+### Grass
+
+Deterministic blade/card instances with local bend and spring-back data. Use `createGrassBladeInstances()` for logo masks or full-card fields.
+
+### Mail
+
+Card-like bend response for email or document surfaces.
+
+## How Pointer-Local Poking Works
+
+The poke model stores UV/local pointer position, pressure, previous position, target pressure, and material-specific decay. Hover can apply light pressure. Press/touch applies stronger pressure. Each frame calls `stepPoke(state, material)` to move toward the target and decay back to rest.
+
+## Performance Rules
+
+- Store fast-changing poke state in refs, uniforms, or buffers.
+- Do not call React `setState` in `useFrame`.
+- Do not call React `setState` on every pointer move.
+- Use deterministic grass instance data and update only the affected uniforms or instance attributes.
 
 > [!WARNING]
-> Do not commit paid assets, licence keys, private packages, generated builds, or giant cache folders.
+> This is an interaction package, not a physics engine. Keep expensive simulation in the app if a project proves it needs one.
 
-## Branch and commit habits
+## Accessibility And Reduced Motion
 
-Use short branches for focused work. Commit related changes together, and keep generated files out of the diff. Write commit messages that say what changed, not what tool made the change.
+R3F meshes are not accessible by themselves. Put accessible labels and keyboard activation on the surrounding HTML control. Use `reducedMotion` for static or lower-power surfaces.
 
-## Issues and pull requests
+## Testing Notes
 
-Use the issue forms for tasks, bugs, setup problems, and asset import problems. Pull requests should list the engine/tool version, what was tested, and any files reviewers should inspect closely.
+The testable core is pure TypeScript:
 
-## Security notes
+- `createPokeState()`
+- `applyPoke()`
+- `stepPoke()`
+- `getPokeInfluence()`
+- `createGrassBladeInstances()`
+- `createPokeUniforms()`
 
-Report secrets, credential leaks, signing keys, paid packages, or exploit details privately where possible. See [`SECURITY.md`](SECURITY.md).
+> [!TIP]
+> Test material behaviour with the pure model first. Add browser or visual tests only when a real canvas regression requires them.
 
-## Maintainer checklist
+## What This Package Does Not Do
 
-- Keep this template engine-neutral.
-- Remove project-specific files before sharing.
-- Update ignore snippets when project tooling changes.
-- Keep issue and PR templates short enough that people use them.
+- It does not include UQ social links or content.
+- It does not ship brand or paid logo assets.
+- It does not create a Canvas for you.
+- It does not use Playwright or Cypress.
+- It does not bundle Three.js or React.
 
-## Licence
+## Development Commands
 
-This template is licensed under the terms in [`LICENSE`](LICENSE).
+```sh
+npm install
+npm run typecheck
+npm run lint
+npm run format:check
+npm run test
+npm run build
+```
+
+## License
+
+See `LICENSE`.

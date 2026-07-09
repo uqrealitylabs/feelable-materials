@@ -1,8 +1,0 @@
-# Linux ignore snippet.
-# Use for desktop and filesystem scratch files.
-# Do not ignore source assets or project settings.
-
-*~
-.fuse_hidden*
-.directory
-.Trash-*

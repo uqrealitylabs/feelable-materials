@@ -1,0 +1,17 @@
+name: Docs
+description: README, examples, or API documentation issue.
+title: "[DOCS]: "
+body:
+  - type: input
+    id: page
+    attributes:
+      label: Page or section
+      placeholder: README Materials
+    validations:
+      required: true
+  - type: textarea
+    id: issue
+    attributes:
+      label: What is unclear or missing?
+    validations:
+      required: true

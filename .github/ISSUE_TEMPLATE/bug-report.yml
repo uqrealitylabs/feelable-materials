@@ -1,5 +1,5 @@
 name: Bug report
-description: Runtime, editor, or build bug.
+description: Poke model, material, R3F component, accessibility, or package bug.
 title: "[BUG]: "
 body:
   - type: input
@@ -7,35 +7,28 @@ body:
     attributes:
       label: Summary line
       description: One sentence describing the bug.
-      placeholder: Player camera jitters when entering VR play mode.
+      placeholder: Glass smudges do not fade after pointer release.
     validations:
       required: true
   - type: input
-    id: engine
+    id: version
     attributes:
-      label: Engine/tool
-      placeholder: Unity 6000.0 LTS, Unreal 5.4, Godot 4.3, Blender, WebXR
+      label: Package version or commit
+      placeholder: 0.1.0 or commit SHA
     validations:
       required: true
   - type: input
-    id: platform
+    id: runtime
     attributes:
-      label: Platform
-      placeholder: Windows, macOS, Linux, Quest, iOS, Android, WebGL
+      label: Runtime
+      placeholder: React 19, Three 0.177, R3F 9, Chrome, Safari
     validations:
       required: true
-  - type: input
-    id: xr_runtime
-    attributes:
-      label: XR device/runtime
-      placeholder: Quest 3 with OpenXR, SteamVR, ARKit, ARCore, WebXR
-    validations:
-      required: false
   - type: textarea
     id: happened
     attributes:
       label: What happened
-      placeholder: Describe the visible failure, crash, editor warning, or build error.
+      placeholder: Describe the visible failure or build error.
     validations:
       required: true
   - type: textarea
@@ -50,18 +43,16 @@ body:
     attributes:
       label: Steps to reproduce
       placeholder: |
-        1. Open the project.
-        2. Start play mode.
-        3. Put on the headset.
-        4. See the issue.
+        1. Render FeelableMaterialCard with material="glass".
+        2. Press and release at UV ...
+        3. See the issue.
     validations:
       required: true
   - type: textarea
     id: logs
     attributes:
-      label: Logs/screenshots
-      description: Link a short log or recording if it helps. Do not upload credentials, API tokens, exploit details, paid assets, licence files, private keys, or huge binaries.
-      placeholder: Paste short public logs here, or use SECURITY.md for sensitive details.
+      label: Logs
+      description: Link a short log if it helps. Do not upload credentials, paid assets, private keys, screenshots with secrets, or huge binaries.
     validations:
       required: false
   - type: textarea
@@ -69,8 +60,7 @@ body:
     attributes:
       label: Acceptance Criteria
       placeholder: |
-        - Bug no longer reproduces.
-        - Fix is checked on the target platform.
-        - Relevant logs or test notes are attached.
+        - Fix is covered by a focused test.
+        - No React state is introduced in fast pointer/frame loops.
     validations:
       required: true

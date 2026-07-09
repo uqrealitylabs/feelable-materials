@@ -1,9 +1,0 @@
-# Web/WebGL export ignore snippet.
-# Use for browser builds, WebXR demos, and frontend tooling.
-# Do not ignore source, public assets, or package manifests.
-
-dist/
-.cache/
-.parcel-cache/
-.vite/
-coverage/
