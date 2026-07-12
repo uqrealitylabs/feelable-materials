@@ -28,7 +28,7 @@ export function syncPokeUniforms(
     state.x - state.previousX,
     state.y - state.previousY,
   ];
-  uniforms.uSmudge.value = state.smudge;
+  uniforms.uSmudge.value = state.stains;
 
   return uniforms;
 }

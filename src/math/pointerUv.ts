@@ -1,5 +1,7 @@
 export type PointerUvEvent = {
   uv?: { x: number; y: number } | undefined;
+  currentTarget?: { clientWidth?: number; clientHeight?: number } | undefined;
+  nativeEvent?: { offsetX?: number; offsetY?: number } | undefined;
 };
 
 export function readPointerUv(event: PointerUvEvent) {
@@ -10,7 +12,13 @@ export function readPointerUv(event: PointerUvEvent) {
     };
   }
 
-  return { x: 0.5, y: 0.5 };
+  const width = event.currentTarget?.clientWidth || 1;
+  const height = event.currentTarget?.clientHeight || 1;
+
+  return {
+    x: clamp((event.nativeEvent?.offsetX ?? width / 2) / width, 0, 1),
+    y: clamp(1 - (event.nativeEvent?.offsetY ?? height / 2) / height, 0, 1),
+  };
 }
 
 function clamp(value: number, min: number, max: number) {

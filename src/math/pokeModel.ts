@@ -1,5 +1,6 @@
 import {
   type FeelableMaterialConfig,
+  type MaterialEventKind,
   materialPresets,
 } from "../materials/materialPresets.js";
 import { gaussianInfluence } from "./gaussianDrift.js";
@@ -12,7 +13,9 @@ export type PokeState = {
   pressure: number;
   targetPressure: number;
   active: boolean;
-  smudge: number;
+  stains: number;
+  scratches: number;
+  cuts: number;
 };
 
 export type GrassBladeInstance = {
@@ -39,9 +42,28 @@ export function createPokeState(overrides: Partial<PokeState> = {}): PokeState {
     pressure: 0,
     targetPressure: 0,
     active: false,
-    smudge: 0,
+    stains: 0,
+    scratches: 0,
+    cuts: 0,
     ...overrides,
   };
+}
+
+export function createPokeModel() {
+  return createPokeState();
+}
+
+export function computePointerVelocity(
+  previous: { x: number; y: number },
+  next: { x: number; y: number },
+  deltaMs = 16.67,
+) {
+  const safeDelta = Math.max(1, deltaMs);
+  const x = next.x - previous.x;
+  const y = next.y - previous.y;
+  const length = Math.hypot(x, y);
+
+  return { x, y, length, perSecond: (length / safeDelta) * 1000 };
 }
 
 export function applyPoke(
@@ -63,30 +85,64 @@ export function releasePoke(state: PokeState) {
   state.active = false;
 }
 
+export function getPokeVelocity(state: PokeState) {
+  return computePointerVelocity(
+    { x: state.previousX, y: state.previousY },
+    { x: state.x, y: state.y },
+    16.67,
+  );
+}
+
 export function stepPoke(
   state: PokeState,
   config: FeelableMaterialConfig = materialPresets.cloth,
+  deltaMs = 16.67,
 ) {
+  const velocity = getPokeVelocity(state);
+  const decay = config.decay ** (Math.max(1, deltaMs) / 16.67);
   const target = state.active ? state.targetPressure : 0;
-  state.pressure += (target - state.pressure) * (1 - config.decay);
 
   if (config.kind === "glass" && state.active) {
-    state.smudge = clamp(
-      state.smudge + state.pressure * config.smear * 0.08,
-      0,
-      1,
-    );
-  } else {
-    state.smudge *= config.kind === "glass" ? 0.94 : 0.9;
+    state.stains = clamp(state.stains + state.targetPressure * 0.18, 0, 1);
+    state.stains = clamp(state.stains + velocity.length * config.smear, 0, 1);
+  }
+  if (
+    state.active &&
+    (config.kind === "rubber" || config.kind === "cloth") &&
+    velocity.length >= config.damageVelocity
+  ) {
+    state.scratches += 1;
+  }
+  if (
+    state.active &&
+    config.kind === "grass" &&
+    velocity.length >= config.cutVelocity
+  ) {
+    state.cuts += Math.max(1, Math.round(velocity.length * 8));
   }
 
+  state.pressure += (target - state.pressure) * (1 - decay);
+  state.stains *= config.kind === "glass" ? 0.985 : 0.94;
   if (!state.active) state.targetPressure = 0;
   state.active = false;
+  state.previousX = state.x;
+  state.previousY = state.y;
 
-  if (state.pressure < 0.001 && state.targetPressure === 0) {
-    state.pressure = 0;
-  }
-  if (state.smudge < 0.001) state.smudge = 0;
+  if (state.pressure < 0.001 && state.targetPressure === 0) state.pressure = 0;
+  if (state.stains < 0.001) state.stains = 0;
+}
+
+export function updatePokeModel(
+  state: PokeState,
+  config: FeelableMaterialConfig,
+  event: { x: number; y: number; pressure?: number; active?: boolean } | null,
+  deltaMs = 16.67,
+) {
+  if (event) applyPoke(state, event.x, event.y, event.pressure);
+  if (event?.active === false) releasePoke(state);
+  stepPoke(state, config, deltaMs);
+
+  return state;
 }
 
 export function getPokeInfluence(
@@ -99,20 +155,9 @@ export function getPokeInfluence(
   return Math.max(0, 1 - distance / radius) * state.pressure;
 }
 
-export function getPokeVelocity(state: PokeState) {
-  const x = state.x - state.previousX;
-  const y = state.y - state.previousY;
-
-  return {
-    x,
-    y,
-    length: Math.hypot(x, y),
-  };
-}
-
 export function getMaterialResponse(
-  state: PokeState,
   config: FeelableMaterialConfig,
+  state: PokeState,
   x = state.x,
   y = state.y,
 ) {
@@ -127,12 +172,32 @@ export function getMaterialResponse(
     depression: influence * config.deformation,
     bulge: config.kind === "rubber" ? influence * config.elasticity : 0,
     crease: config.kind === "cloth" ? influence * config.deformation : 0,
-    smudge: config.kind === "glass" ? state.smudge : 0,
+    smear: config.kind === "glass" ? state.stains : 0,
+    smudge: config.kind === "glass" ? state.stains : 0,
+    scratch: state.scratches > 0,
+    cut: state.cuts > 0,
+    resistance: state.pressure * config.resistance,
     bend:
       config.kind === "grass" || config.kind === "mail"
         ? influence * config.deformation
         : 0,
   };
+}
+
+export function getMaterialEventKind(
+  config: FeelableMaterialConfig,
+  state: PokeState,
+  pressure: number,
+): MaterialEventKind {
+  const velocity = getPokeVelocity(state);
+
+  if (config.kind === "grass" && velocity.length >= config.cutVelocity) {
+    return "cut";
+  }
+  if (config.kind === "glass" && velocity.length > 0.22) return "fastSwipe";
+  if (velocity.length >= config.damageVelocity) return "damage";
+  if (pressure > 0.55) return "press";
+  return pressure > 0.1 ? "contact" : "hover";
 }
 
 export function createGrassBladeInstances(options: GrassBladeOptions = {}) {

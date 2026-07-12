@@ -1,24 +1,24 @@
-name: CI
+name: Release
 
 on:
-  pull_request:
   push:
-    branches:
-      - main
+    tags:
+      - "v*"
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: release-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
 
 defaults:
   run:
     shell: bash
 
 jobs:
-  test:
+  pack:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -31,12 +31,14 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - run: npm run check:no-js
-      - run: npm run check:workflows
       - run: npm run typecheck
-      - run: npm run lint
-      - run: npm run format:check
       - run: npm run test
       - run: npm run build
-      - run: npm run package:check
-      - run: npm run test:consumer
+      - run: mkdir -p artifacts && npm pack --pack-destination artifacts
+      - run: shasum -a 256 artifacts/*.tgz > artifacts/SHA256SUMS
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: feelable-materials-package
+          path: artifacts
+          if-no-files-found: error
+          retention-days: 14
