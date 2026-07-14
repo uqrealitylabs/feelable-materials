@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { existsSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 
@@ -25,9 +26,20 @@ for (const path of config.forbiddenTopLevelPaths) {
   if (existsSync(path)) issues.push(`forbidden top-level path: ${path}`);
 }
 
+function isTracked(path: string) {
+  try {
+    execFileSync("git", ["ls-files", "--error-unmatch", "--", path], {
+      stdio: "ignore",
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 for (const path of config.generatedPaths) {
-  if (existsSync(path))
-    issues.push(`generated output must not be present: ${path}`);
+  if (existsSync(path) && isTracked(path))
+    issues.push(`generated output is tracked: ${path}`);
 }
 
 for (const file of readdirSync(".")) {
