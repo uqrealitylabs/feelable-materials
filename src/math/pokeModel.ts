@@ -124,7 +124,6 @@ export function stepPoke(
   state.pressure += (target - state.pressure) * (1 - decay);
   state.stains *= config.kind === "glass" ? 0.985 : 0.94;
   if (!state.active) state.targetPressure = 0;
-  state.active = false;
   state.previousX = state.x;
   state.previousY = state.y;
 
@@ -175,6 +174,13 @@ export function getMaterialResponse(
     crease: config.kind === "cloth" ? influence * config.deformation : 0,
     smear: config.kind === "glass" ? state.stains : 0,
     smudge: config.kind === "glass" ? state.stains : 0,
+    highlight:
+      config.kind === "enamel"
+        ? influence * (1 - config.roughness)
+        : influence * 0.35,
+    contactShadow:
+      localContact && config.kind !== "glass" ? influence * 0.45 : 0,
+    gloss: config.kind === "enamel" ? influence * 0.9 : 0,
     scratch: localContact && state.scratches > 0,
     cut: localContact && state.cuts > 0,
     resistance: state.pressure * config.resistance,

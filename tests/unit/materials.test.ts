@@ -9,6 +9,8 @@ import {
   applyPoke,
   createContactHistory,
   createGrassBladeInstances,
+  createLinkedInRegionManifest,
+  createMaterialRegionManifest,
   createPokeModel,
   createPokeState,
   createPokeUniforms,
@@ -21,6 +23,7 @@ import {
   getMaterialResponse,
   getPokeInfluence,
   isMaterialKind,
+  listRegionMaterials,
   materialConfigs,
   materialPresets,
   readPointerUv,
@@ -35,6 +38,7 @@ import {
   updatePokeModel,
 } from "../../src";
 import {
+  applyFeelableMeshResponse,
   FeelableMaterialCard,
   FeelableSurface,
   GrassLogoSurface,
@@ -60,7 +64,7 @@ describe("material presets", () => {
     ["glass", "smudge"],
     ["grass", "bend"],
     ["mail", "bend"],
-    ["enamel", "smudge"],
+    ["enamel", "gloss"],
   ] as const)("maps %s to %s behaviour", (kind, behavior) => {
     expect(materialPresets[kind]).toMatchObject({
       kind,
@@ -124,11 +128,25 @@ describe("poke model", () => {
 
     expect(press.pressure).toBeGreaterThan(hover.pressure);
 
+    releasePoke(press);
     for (let i = 0; i < 40; i += 1) {
       stepPoke(press, materialPresets.cloth);
     }
 
     expect(press.pressure).toBeLessThan(0.1);
+  });
+
+  it("keeps long press active until release", () => {
+    const state = createPokeState();
+    applyPoke(state, 0.5, 0.5, 0.8);
+    stepPoke(state, materialPresets.rubber, 16.67);
+    const first = state.pressure;
+    stepPoke(state, materialPresets.rubber, 100);
+
+    expect(state.pressure).toBeGreaterThan(first);
+    releasePoke(state);
+    stepPoke(state, materialPresets.rubber, 100);
+    expect(state.pressure).toBeLessThan(0.8);
   });
 
   it("accumulates and fades glass contact marks", () => {
@@ -156,6 +174,9 @@ describe("poke model", () => {
     expect(
       getMaterialResponse(materialPresets.mail, state).bend,
     ).toBeGreaterThan(0);
+    const enamel = getMaterialResponse(materialPresets.enamel, state);
+    expect(enamel.gloss).toBeGreaterThan(0);
+    expect(enamel.highlight).toBeGreaterThan(enamel.depression);
   });
 
   it("classifies events and keeps material-specific damage local", () => {
@@ -211,12 +232,24 @@ describe("poke model", () => {
     const history = createContactHistory({ maxPoints: 1, fadeMs: 20 });
     addContact(history, { x: 0.2, y: 0.4 }, 4, "press");
     addContact(history, { x: 0.8, y: 0.1 }, 0.5, "release");
+    addContact(history, { x: 0.1, y: 0.2 }, 0.2, "hover");
+    addContact(history, { x: 0.3, y: 0.4 }, 0.2, "damage");
     expect(history.points).toHaveLength(1);
     expect(history.points[0]).toMatchObject({
-      x: 0.8,
-      y: 0.1,
-      strength: 0.5,
+      uv: [0.3, 0.4],
+      pressure: 0.2,
+      velocity: [0, 0],
+      phase: "drag",
     });
+    const phaseHistory = createContactHistory({ maxPoints: 3 });
+    addContact(phaseHistory, { x: 0, y: 0 }, 0.1, "hover");
+    addContact(phaseHistory, { x: 0, y: 0 }, 0.1, "contact");
+    addContact(phaseHistory, { x: 0, y: 0 }, 0.1, "release");
+    expect(phaseHistory.points.map((point) => point.phase)).toEqual([
+      "release",
+      "press",
+      "hover",
+    ]);
     stepContactHistory(history, 21);
     expect(history.points).toHaveLength(0);
 
@@ -263,6 +296,81 @@ describe("poke model", () => {
         },
       }),
     ).toBe(false);
+  });
+});
+
+describe("material regions", () => {
+  it("validates reusable multi-material manifests", () => {
+    const manifest = createLinkedInRegionManifest("linkedin.svg");
+
+    expect(listRegionMaterials(manifest)).toEqual(["enamel", "glass"]);
+    expect(
+      createMaterialRegionManifest({
+        asset: "demo.svg",
+        regions: [
+          {
+            id: "camera-body",
+            source: { type: "closed-path", pathId: "body" },
+            material: "cloth",
+          },
+          {
+            id: "accent",
+            source: { type: "color", value: "#ff00aa", tolerance: 0.2 },
+            material: "glass",
+          },
+          {
+            id: "mask",
+            source: {
+              type: "mask-channel",
+              texture: "mask.png",
+              channel: "a",
+            },
+            material: "grass",
+          },
+        ],
+      }),
+    ).toMatchObject({ asset: "demo.svg" });
+  });
+
+  it("fails closed for invalid region manifests", () => {
+    expect(() =>
+      createMaterialRegionManifest({
+        asset: "",
+        regions: [],
+      }),
+    ).toThrow(/asset is required/);
+    expect(() =>
+      createMaterialRegionManifest({
+        asset: "bad.svg",
+        regions: [
+          {
+            id: "",
+            source: { type: "closed-path", pathId: "" },
+            material: "enamel",
+          },
+          {
+            id: "bad-material",
+            source: { type: "svg-selector", selector: "#ok" },
+            material: "paint" as never,
+          },
+          {
+            id: "dup",
+            source: { type: "svg-selector", selector: "" },
+            material: "cloth",
+          },
+          {
+            id: "dup",
+            source: { type: "color", value: "red", tolerance: 2 },
+            material: "glass",
+          },
+          {
+            id: "mask",
+            source: { type: "mask-channel", texture: "", channel: "r" },
+            material: "grass",
+          },
+        ],
+      }),
+    ).toThrow(/duplicate region id/);
   });
 });
 
@@ -346,6 +454,7 @@ describe("hot loop guard", () => {
     expect(hookSource).not.toContain("useState");
     expect(hookSource).not.toContain("setState");
     expect(componentSource).toContain("delta * 1000");
+    expect(componentSource).toContain("mesh.scale.set");
     expect(componentSource).not.toContain("useState");
     expect(componentSource).not.toContain("setState");
     expect(grassSource).toContain("resolveGrassBladeCount");
@@ -354,6 +463,26 @@ describe("hot loop guard", () => {
 });
 
 describe("React adapters", () => {
+  it("applies visible mesh deformation from poke response without React state", () => {
+    const set = vi.fn();
+    const mesh = {
+      scale: { set },
+      position: { z: 0 },
+      userData: {},
+    };
+    const state = createPokeState({ x: 0.5, y: 0.5, pressure: 0.8 });
+
+    applyFeelableMeshResponse(mesh, materialPresets.rubber, state);
+
+    expect(set).toHaveBeenCalledWith(
+      expect.any(Number),
+      expect.any(Number),
+      expect.any(Number),
+    );
+    expect(mesh.position.z).not.toBe(0);
+    expect(mesh.userData).toHaveProperty("feelableResponse");
+  });
+
   it("renders card, surface, and grass components with shared poke state", () => {
     let surfaceRenderer: ReturnType<typeof create> | undefined;
     let cardRenderer: ReturnType<typeof create> | undefined;

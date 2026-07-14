@@ -5,7 +5,12 @@ export type MaterialKind =
   | "grass"
   | "mail"
   | "enamel";
-export type FeelableMaterialBehavior = "crease" | "squish" | "smudge" | "bend";
+export type FeelableMaterialBehavior =
+  | "crease"
+  | "squish"
+  | "smudge"
+  | "bend"
+  | "gloss";
 export type MaterialEventKind =
   | "hover"
   | "contact"
@@ -116,7 +121,7 @@ export const materialPresets: Record<MaterialKind, FeelableMaterialConfig> = {
   },
   enamel: {
     kind: "enamel",
-    behavior: "smudge",
+    behavior: "gloss",
     pointerResponse: true,
     pressBoost: 1.08,
     decay: 0.9,

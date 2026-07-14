@@ -1,11 +1,11 @@
 import type { MaterialEventKind } from "../materials/materialPresets.js";
 
 export type ContactPoint = {
-  x: number;
-  y: number;
-  ageMs: number;
-  strength: number;
-  eventKind: MaterialEventKind;
+  uv: [number, number];
+  pressure: number;
+  velocity: [number, number];
+  age: number;
+  phase: "hover" | "press" | "drag" | "release";
 };
 
 export type ContactHistory = {
@@ -26,15 +26,16 @@ export function createContactHistory(
 
 export function addContact(
   history: ContactHistory,
-  point: { x: number; y: number },
+  point: { x: number; y: number; velocity?: [number, number] },
   strength: number,
   eventKind: MaterialEventKind,
 ) {
   history.points.unshift({
-    ...point,
-    ageMs: 0,
-    strength: Math.max(0, Math.min(1, strength)),
-    eventKind,
+    uv: [point.x, point.y],
+    age: 0,
+    pressure: Math.max(0, Math.min(1, strength)),
+    velocity: point.velocity ?? [0, 0],
+    phase: toContactPhase(eventKind),
   });
   history.points.length = Math.min(history.points.length, history.maxPoints);
 
@@ -43,11 +44,16 @@ export function addContact(
 
 export function stepContactHistory(history: ContactHistory, deltaMs: number) {
   history.points.forEach((point) => {
-    point.ageMs += Math.max(0, deltaMs);
+    point.age += Math.max(0, deltaMs);
   });
-  history.points = history.points.filter(
-    (point) => point.ageMs < history.fadeMs,
-  );
+  history.points = history.points.filter((point) => point.age < history.fadeMs);
 
   return history;
+}
+
+function toContactPhase(eventKind: MaterialEventKind): ContactPoint["phase"] {
+  if (eventKind === "hover") return "hover";
+  if (eventKind === "release") return "release";
+  if (eventKind === "press" || eventKind === "contact") return "press";
+  return "drag";
 }

@@ -1,4 +1,15 @@
 export type {
+  MaterialRegion,
+  MaterialRegionManifest,
+  MaterialRegionSource,
+} from "./materialRegions.js";
+export {
+  createLinkedInRegionManifest,
+  createMaterialRegionManifest,
+  listRegionMaterials,
+  validateMaterialRegionManifest,
+} from "./materialRegions.js";
+export type {
   FeelableMaterialBehavior,
   FeelableMaterialConfig,
   MaterialEventKind,
