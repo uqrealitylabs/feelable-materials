@@ -55,6 +55,13 @@
       import { FeelableSurface, GrassLogoSurface } from "../../dist/react.js";
 
       const materials = ["cloth", "rubber", "glass", "grass", "enamel"];
+      const colors = {
+        cloth: "#d946ef",
+        rubber: "#5865f2",
+        glass: "#9bdcff",
+        grass: "#4ade80",
+        enamel: "#f8fafc",
+      };
 
       function Tile({ material }) {
         const Surface = material === "grass" ? GrassLogoSurface : FeelableSurface;
@@ -74,7 +81,7 @@
               },
               createElement("boxGeometry", { args: [1.6, 1, 0.05] }),
               createElement("meshStandardMaterial", {
-                color: materialConfigs[material].color,
+                color: colors[material],
                 roughness: materialConfigs[material].roughness,
                 metalness: 0,
               }),
