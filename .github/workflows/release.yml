@@ -2,8 +2,8 @@ name: Release
 
 on:
   push:
-    tags:
-      - "v*"
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
@@ -18,27 +18,55 @@ defaults:
     shell: bash
 
 jobs:
-  pack:
+  release-please:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+    steps:
+      - uses: googleapis/release-please-action@5c625bfb5d1ff62eadeeb3772007f7f66fdcf071 # v4
+        id: release
+        with:
+          config-file: tools/config/release-please.json
+          manifest-file: tools/config/release-manifest.json
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN || github.token }}
+
+  package-artifacts:
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 1
           persist-credentials: false
+          ref: ${{ needs.release-please.outputs.tag_name }}
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
         with:
           node-version: 24
           cache: npm
-      - run: npm ci
-      - run: npm run typecheck
-      - run: npm run test
-      - run: npm run build
-      - run: mkdir -p artifacts && npm pack --pack-destination artifacts
-      - run: shasum -a 256 artifacts/*.tgz > artifacts/SHA256SUMS
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: feelable-materials-package
-          path: artifacts
-          if-no-files-found: error
-          retention-days: 14
+      - run: |
+          set -euo pipefail
+          npm ci
+          npm run test:ci
+      - run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          npm pack --pack-destination artifacts
+          shasum -a 256 artifacts/*.tgz > artifacts/SHA256SUMS
+          find artifacts -maxdepth 1 -type f | sort > artifacts/package-manifest.txt
+      - run: |
+          set -euo pipefail
+          export RELEASE_TAG="${{ needs.release-please.outputs.tag_name }}"
+          npm run release:codename -- "${RELEASE_TAG}"
+          node tools/scripts/release/update-github-release.ts "${RELEASE_TAG}"
+          gh release upload "${RELEASE_TAG}" artifacts/* --clobber
+        env:
+          GH_TOKEN: ${{ github.token }}

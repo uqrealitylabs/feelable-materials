@@ -34,6 +34,14 @@ export function GrassLogoSurface({
       reducedMotion,
       userData: { grassBlades: blades },
     },
-    children,
+    createElement(
+      "instancedMesh",
+      {
+        args: [undefined, undefined, blades.length],
+        frustumCulled: false,
+        userData: { grassBlades: blades },
+      },
+      children,
+    ),
   );
 }

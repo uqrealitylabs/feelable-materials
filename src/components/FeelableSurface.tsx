@@ -26,7 +26,7 @@ export function FeelableSurface({
 }: FeelableSurfaceProps) {
   const poke = usePokeSurface(material, options);
   const config = getMaterialPreset(material);
-  useFrame(poke.step);
+  useFrame((_state, delta) => poke.step(delta * 1000));
 
   return createElement(
     "mesh",

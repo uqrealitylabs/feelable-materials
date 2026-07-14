@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Feelable Materials Demo</title>
+    <style>
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        font-family: system-ui, sans-serif;
+        background: #101820;
+        color: white;
+      }
+      main {
+        width: min(58rem, calc(100vw - 2rem));
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+        gap: 1rem;
+      }
+      .tile {
+        min-height: 7rem;
+        border: 1px solid #ffffff30;
+        display: grid;
+        place-items: center;
+        border-radius: 0.5rem;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Feelable Materials</h1>
+      <p>Hover, press, and drag the material tiles in a React Three Fiber consumer.</p>
+      <div id="root"></div>
+    </main>
+    <script type="importmap">
+      {
+        "imports": {
+          "react": "https://esm.sh/react@19.2.1",
+          "react-dom/client": "https://esm.sh/react-dom@19.2.1/client",
+          "three": "https://esm.sh/three@0.177.0",
+          "@react-three/fiber": "https://esm.sh/@react-three/fiber@9.4.0?external=react,three"
+        }
+      }
+    </script>
+    <script type="module">
+      import React, { createElement } from "react";
+      import { createRoot } from "react-dom/client";
+      import { Canvas } from "@react-three/fiber";
+      import { materialConfigs } from "../../dist/index.js";
+      import { FeelableSurface, GrassLogoSurface } from "../../dist/react.js";
+
+      const materials = ["cloth", "rubber", "glass", "grass", "enamel"];
+
+      function Tile({ material }) {
+        const Surface = material === "grass" ? GrassLogoSurface : FeelableSurface;
+        return createElement(
+          "section",
+          { className: "tile", "aria-label": `${material} demo` },
+          createElement(
+            Canvas,
+            { orthographic: true, camera: { position: [0, 0, 5], zoom: 80 } },
+            createElement(
+              Surface,
+              {
+                material,
+                ariaLabel: `${material} surface`,
+                count: 96,
+                mask: (x, y) => x > 0.15 && x < 0.85 && y > 0.18 && y < 0.82,
+              },
+              createElement("boxGeometry", { args: [1.6, 1, 0.05] }),
+              createElement("meshStandardMaterial", {
+                color: materialConfigs[material].color,
+                roughness: materialConfigs[material].roughness,
+                metalness: 0,
+              }),
+            ),
+          ),
+        );
+      }
+
+      createRoot(document.querySelector("#root")).render(
+        createElement(
+          "div",
+          { className: "grid" },
+          materials.map((material) =>
+            createElement(Tile, { key: material, material }),
+          ),
+        ),
+      );
+    </script>
+  </body>
+</html>

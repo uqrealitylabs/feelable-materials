@@ -23,11 +23,11 @@ export function syncPokeUniforms(
 ) {
   if (!state) return uniforms;
 
-  uniforms.uPoke.value = [state.x, state.y, state.pressure];
-  uniforms.uPokeVelocity.value = [
-    state.x - state.previousX,
-    state.y - state.previousY,
-  ];
+  uniforms.uPoke.value[0] = state.x;
+  uniforms.uPoke.value[1] = state.y;
+  uniforms.uPoke.value[2] = state.pressure;
+  uniforms.uPokeVelocity.value[0] = state.x - state.previousX;
+  uniforms.uPokeVelocity.value[1] = state.y - state.previousY;
   uniforms.uSmudge.value = state.stains;
 
   return uniforms;

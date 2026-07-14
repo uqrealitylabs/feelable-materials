@@ -4,7 +4,11 @@
 
 Do not open a public issue for vulnerabilities or accidental credential exposure.
 
-Report privately to the UQ Reality Labs maintainers. Include:
+Use GitHub private vulnerability reporting:
+
+https://github.com/uqrealitylabs/feelable-materials/security/advisories/new
+
+Include:
 
 - affected version or commit
 - reproduction steps

@@ -33,9 +33,12 @@ jobs:
         with:
           node-version: 24
           cache: npm
-      - run: npm ci
-      - run: npm run check:workflows
-      - run: npm run security:audit
+      - run: |
+          set -euo pipefail
+          npm ci
+          npm run check:workflows
+          npm run security:audit
+          npm run security:osv
 
   dependency-review:
     if: github.event_name == 'pull_request'

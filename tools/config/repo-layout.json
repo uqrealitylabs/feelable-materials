@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "requiredPaths": [
+    ".github/workflows",
+    "docs/README.md",
+    "examples/demo/index.html",
+    "src",
+    "tests",
+    "tools/config",
+    "tools/scripts",
+    "package.json",
+    "package-lock.json"
+  ],
+  "forbiddenTopLevelPaths": ["config", "configs", "scripts", "cypress"],
+  "allowedRootConfigShims": ["biome.json", "tsconfig.json"],
+  "generatedPaths": ["coverage", "dist", "build", "test-results/cypress"],
+  "allowedSingleFileDirs": [
+    "src/hooks",
+    "src/materials",
+    "src/shaders",
+    "tests/unit",
+    "tools/scripts/demo",
+    "tools/scripts/repo",
+    "tools/scripts/release",
+    "tools/scripts/security",
+    "tools/scripts/wiki"
+  ]
+}

@@ -62,8 +62,8 @@ export function usePokeSurface(
     stateRef,
     uniformsRef,
     handlers,
-    step: () => {
-      stepPoke(stateRef.current, config);
+    step: (deltaMs = 16.67) => {
+      stepPoke(stateRef.current, config, deltaMs);
       syncPokeUniforms(uniformsRef.current, stateRef.current);
       return stateRef.current;
     },

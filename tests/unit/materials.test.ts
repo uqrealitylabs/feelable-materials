@@ -33,7 +33,7 @@ import {
   syncPokeUniforms,
   triggerMaterialHaptic,
   updatePokeModel,
-} from "../src";
+} from "../../src";
 import {
   FeelableMaterialCard,
   FeelableSurface,
@@ -41,14 +41,16 @@ import {
   usePointerUv,
   usePokeSurface,
   useReducedMotionSurface,
-} from "../src/react";
+} from "../../src/react";
 
 (
   globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
 ).IS_REACT_ACT_ENVIRONMENT = true;
 
 vi.mock("@react-three/fiber", () => ({
-  useFrame: vi.fn((callback: () => void) => callback()),
+  useFrame: vi.fn((callback: (_state: unknown, delta: number) => void) =>
+    callback({}, 0.032),
+  ),
 }));
 
 describe("material presets", () => {
@@ -169,6 +171,9 @@ describe("poke model", () => {
     expect(getMaterialResponse(materialPresets.rubber, rubber).scratch).toBe(
       true,
     );
+    expect(
+      getMaterialResponse(materialPresets.rubber, rubber, 0.1, 0.1).scratch,
+    ).toBe(false);
 
     const grass = createPokeState();
     applyPoke(grass, 0.1, 0.1, 0.6);
@@ -176,6 +181,9 @@ describe("poke model", () => {
     expect(getMaterialEventKind(materialPresets.grass, grass, 0.6)).toBe("cut");
     stepPoke(grass, materialPresets.grass);
     expect(grass.cuts).toBeGreaterThan(0);
+    expect(
+      getMaterialResponse(materialPresets.grass, grass, 0.1, 0.9).cut,
+    ).toBe(false);
 
     const glass = createPokeState();
     applyPoke(glass, 0.1, 0.1, 0.4);
@@ -310,6 +318,12 @@ describe("uniforms", () => {
       uPoke: { value: [0.2, 0.7, 0.4] },
       uSmudge: { value: 0.3 },
     });
+    const pokeValue = uniforms.uPoke.value;
+    syncPokeUniforms(
+      uniforms,
+      createPokeState({ x: 0.4, y: 0.5, pressure: 0.2 }),
+    );
+    expect(uniforms.uPoke.value).toBe(pokeValue);
   });
 });
 
@@ -317,24 +331,25 @@ describe("hot loop guard", () => {
   it("does not use React state in pointer/frame hot paths", () => {
     const root = dirname(fileURLToPath(import.meta.url));
     const hookSource = readFileSync(
-      join(root, "../src/hooks/usePokeSurface.ts"),
+      join(root, "../../src/hooks/usePokeSurface.ts"),
       "utf8",
     );
     const componentSource = readFileSync(
-      join(root, "../src/components/FeelableSurface.tsx"),
+      join(root, "../../src/components/FeelableSurface.tsx"),
       "utf8",
     );
     const grassSource = readFileSync(
-      join(root, "../src/components/GrassLogoSurface.tsx"),
+      join(root, "../../src/components/GrassLogoSurface.tsx"),
       "utf8",
     );
 
     expect(hookSource).not.toContain("useState");
     expect(hookSource).not.toContain("setState");
-    expect(componentSource).toContain("useFrame(poke.step)");
+    expect(componentSource).toContain("delta * 1000");
     expect(componentSource).not.toContain("useState");
     expect(componentSource).not.toContain("setState");
     expect(grassSource).toContain("resolveGrassBladeCount");
+    expect(grassSource).toContain("instancedMesh");
   });
 });
 

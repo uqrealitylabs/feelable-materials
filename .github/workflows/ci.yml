@@ -30,13 +30,11 @@ jobs:
         with:
           node-version: 24
           cache: npm
-      - run: npm ci
-      - run: npm run check:no-js
-      - run: npm run check:workflows
-      - run: npm run typecheck
-      - run: npm run lint
-      - run: npm run format:check
-      - run: npm run test
-      - run: npm run build
-      - run: npm run package:check
-      - run: npm run test:consumer
+      - run: |
+          set -euo pipefail
+          npm ci
+      - run: |
+          set -euo pipefail
+          npm run check:workflows
+          npm run config:check
+          npm run test:ci

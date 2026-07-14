@@ -166,6 +166,7 @@ export function getMaterialResponse(
     config.radius,
     state.pressure,
   );
+  const localContact = influence > 0.001;
 
   return {
     influence,
@@ -174,8 +175,8 @@ export function getMaterialResponse(
     crease: config.kind === "cloth" ? influence * config.deformation : 0,
     smear: config.kind === "glass" ? state.stains : 0,
     smudge: config.kind === "glass" ? state.stains : 0,
-    scratch: state.scratches > 0,
-    cut: state.cuts > 0,
+    scratch: localContact && state.scratches > 0,
+    cut: localContact && state.cuts > 0,
     resistance: state.pressure * config.resistance,
     bend:
       config.kind === "grass" || config.kind === "mail"
