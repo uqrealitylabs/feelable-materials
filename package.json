@@ -1,6 +1,6 @@
 {
   "name": "@uqrealitylabs/feelable-materials",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Tactile React Three Fiber materials that crease, compress, smudge, bend, and react to touch.",
   "type": "module",
   "license": "GPL-3.0-only",
