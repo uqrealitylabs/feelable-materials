@@ -3,7 +3,7 @@
     "allowImportingTsExtensions": true,
     "allowSyntheticDefaultImports": true,
     "declaration": true,
-    "declarationMap": true,
+    "declarationMap": false,
     "exactOptionalPropertyTypes": true,
     "jsx": "react-jsx",
     "lib": ["DOM", "ES2022"],

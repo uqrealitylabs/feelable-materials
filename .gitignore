@@ -31,8 +31,7 @@ out/
 build/
 coverage/
 artifacts/
-cypress/screenshots/
-cypress/videos/
+test-results/cypress/
 
 node_modules/
 .npm/
