@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/uqrealitylabs/feelable-materials/compare/v0.2.0...v0.2.1) (2026-07-18)
+
+
+### Bug Fixes
+
+* tighten material demo artifacts ([68363f0](https://github.com/uqrealitylabs/feelable-materials/commit/68363f093ac9cb49bb21773b0ebda16a3715ddab))
+
 ## [0.2.0](https://github.com/uqrealitylabs/feelable-materials/compare/v0.1.0...v0.2.0) (2026-07-16)
 
 
