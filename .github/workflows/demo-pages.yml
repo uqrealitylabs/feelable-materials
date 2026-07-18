@@ -33,10 +33,14 @@ jobs:
       - run: |
           set -euo pipefail
           npm ci
-          npm run demo:build
+          npm run typecheck
+          npm run lint
+          npm run format:check
+          npm run test:coverage
+          DEMO_BASE_PATH=/project/feelable-materials/ npm run demo:build
+          DEMO_BASE_PATH=/project/feelable-materials/ npm run test:demo
           mkdir -p artifacts
-          cp -R examples/demo artifacts/examples
-          cp -R dist artifacts/dist
+          cp -R demo-dist/. artifacts/
       - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:

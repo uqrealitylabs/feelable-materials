@@ -1,104 +1,20 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Feelable Materials Demo</title>
-    <style>
-      body {
-        margin: 0;
-        min-height: 100vh;
-        display: grid;
-        place-items: center;
-        font-family: system-ui, sans-serif;
-        background: #101820;
-        color: white;
-      }
-      main {
-        width: min(58rem, calc(100vw - 2rem));
-      }
-      .grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
-        gap: 1rem;
-      }
-      .tile {
-        min-height: 7rem;
-        border: 1px solid #ffffff30;
-        display: grid;
-        place-items: center;
-        border-radius: 0.5rem;
-      }
-    </style>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#10121a" />
+    <meta name="description" content="A live demo of tactile React Three Fiber materials from UQ Reality Labs." />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='5' y='5' width='54' height='54' rx='8' fill='%2368e8ff'/%3E%3Cpath d='M18 34h28M24 22v24M40 22v24' stroke='%2310121a' stroke-width='6'/%3E%3C/svg%3E" />
+    <link rel="canonical" href="https://uqrealitylabs.com/project/feelable-materials/" />
+    <meta property="og:title" content="Feelable Materials | Tactile surfaces for R3F" />
+    <meta property="og:description" content="Poke, drag, press, and compare cloth, rubber, glass, grass, and enamel responses." />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://uqrealitylabs.com/project/feelable-materials/" />
+    <title>Feelable Materials | Tactile surfaces for R3F</title>
   </head>
   <body>
-    <main>
-      <h1>Feelable Materials</h1>
-      <p>Hover, press, and drag the material tiles in a React Three Fiber consumer.</p>
-      <div id="root"></div>
-    </main>
-    <script type="importmap">
-      {
-        "imports": {
-          "react": "https://esm.sh/react@19.2.1",
-          "react-dom/client": "https://esm.sh/react-dom@19.2.1/client",
-          "three": "https://esm.sh/three@0.177.0",
-          "@react-three/fiber": "https://esm.sh/@react-three/fiber@9.4.0?external=react,three"
-        }
-      }
-    </script>
-    <script type="module">
-      import React, { createElement } from "react";
-      import { createRoot } from "react-dom/client";
-      import { Canvas } from "@react-three/fiber";
-      import { materialConfigs } from "../../dist/index.js";
-      import { FeelableSurface, GrassLogoSurface } from "../../dist/react.js";
-
-      const materials = ["cloth", "rubber", "glass", "grass", "enamel"];
-      const colors = {
-        cloth: "#d946ef",
-        rubber: "#5865f2",
-        glass: "#9bdcff",
-        grass: "#4ade80",
-        enamel: "#f8fafc",
-      };
-
-      function Tile({ material }) {
-        const Surface = material === "grass" ? GrassLogoSurface : FeelableSurface;
-        return createElement(
-          "section",
-          { className: "tile", "aria-label": `${material} demo` },
-          createElement(
-            Canvas,
-            { orthographic: true, camera: { position: [0, 0, 5], zoom: 80 } },
-            createElement(
-              Surface,
-              {
-                material,
-                ariaLabel: `${material} surface`,
-                count: 96,
-                mask: (x, y) => x > 0.15 && x < 0.85 && y > 0.18 && y < 0.82,
-              },
-              createElement("boxGeometry", { args: [1.6, 1, 0.05] }),
-              createElement("meshStandardMaterial", {
-                color: colors[material],
-                roughness: materialConfigs[material].roughness,
-                metalness: 0,
-              }),
-            ),
-          ),
-        );
-      }
-
-      createRoot(document.querySelector("#root")).render(
-        createElement(
-          "div",
-          { className: "grid" },
-          materials.map((material) =>
-            createElement(Tile, { key: material, material }),
-          ),
-        ),
-      );
-    </script>
+    <div id="root"><p>Loading the material bench...</p></div>
+    <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

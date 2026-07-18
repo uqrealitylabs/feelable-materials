@@ -2,7 +2,13 @@ import { readdirSync, statSync } from "node:fs";
 import { extname, join, relative } from "node:path";
 
 const forbidden = new Set([".js", ".jsx", ".mjs", ".cjs"]);
-const ignored = new Set([".git", "coverage", "dist", "node_modules"]);
+const ignored = new Set([
+  ".git",
+  "coverage",
+  "demo-dist",
+  "dist",
+  "node_modules",
+]);
 
 function isIgnored(path: string) {
   return [...ignored].some(

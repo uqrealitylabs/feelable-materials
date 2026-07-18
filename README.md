@@ -114,6 +114,25 @@ npm run build
 npm run demo:build
 ```
 
+## Interactive Demo
+
+Run the demo locally with `npm run demo:dev`. A production build is written to
+`demo-dist/` by `npm run demo:build`, and `npm run demo:preview` serves that
+output locally.
+
+The demo is built with `/project/feelable-materials/` as its production base
+path and is intended for
+`https://uqrealitylabs.com/project/feelable-materials/`. The current repository
+Pages site is separately exposed at
+`https://uqrealitylabs.com/feelable-materials/`; the organisation's root-site
+or proxy configuration must map the requested `/project/feelable-materials/`
+path to this Pages deployment. No conflicting `CNAME` is committed here.
+
+No Chalk font asset is present in the source repositories. The demo therefore
+uses the existing OFL-licensed Pixelify Sans asset in `examples/demo/src/assets`
+with a Chalk/Chalkboard fallback stack. The original font notices remain beside
+the asset.
+
 ## License
 
 See `LICENSE`.

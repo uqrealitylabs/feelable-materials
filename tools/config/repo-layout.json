@@ -13,7 +13,7 @@
   ],
   "forbiddenTopLevelPaths": ["config", "configs", "scripts", "cypress"],
   "allowedRootConfigShims": ["biome.json", "tsconfig.json"],
-  "generatedPaths": ["coverage", "dist", "build", "test-results/cypress"],
+  "generatedPaths": ["coverage", "demo-dist", "dist", "build", "test-results/cypress"],
   "allowedSingleFileDirs": [
     "src/hooks",
     "src/materials",

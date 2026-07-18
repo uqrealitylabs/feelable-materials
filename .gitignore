@@ -27,6 +27,7 @@ tmp/
 *.mobileprovision
 
 dist/
+demo-dist/
 out/
 build/
 coverage/
