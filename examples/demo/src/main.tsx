@@ -17,6 +17,7 @@ function App() {
   const [webgl, setWebgl] = useState<boolean | null>(null);
   const [benchNearViewport, setBenchNearViewport] = useState(false);
   const [resetKey, setResetKey] = useState(0);
+  const [copyStatus, setCopyStatus] = useState("Copy example");
   const benchRef = useRef<HTMLElement>(null);
   const selectedItem = materialItems.find((item) => item.id === selected) ?? materialItems[0];
   const install = "npm install @uqrealitylabs/feelable-materials three @react-three/fiber";
@@ -47,7 +48,17 @@ function App() {
   }, []);
 
   async function copyExample() {
-    if (navigator.clipboard) await navigator.clipboard.writeText(code);
+    if (!navigator.clipboard) {
+      setCopyStatus("Clipboard unavailable");
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopyStatus("Copied");
+      window.setTimeout(() => setCopyStatus("Copy example"), 1600);
+    } catch {
+      setCopyStatus("Copy failed");
+    }
   }
 
   return (
@@ -85,7 +96,7 @@ function App() {
 
         <section className="feature-section section-block" id="model" aria-labelledby="model-title"><div className="section-heading"><p className="eyebrow">ONE CONTACT MODEL / DISTINCT RESPONSES</p><h2 id="model-title">A shared poke, different material rules.</h2></div><div className="feature-grid"><article className="feature-item"><span className="feature-number">01</span><h3>Local coordinates</h3><p>Pointer UV, pressure, velocity, phase, and age stay close to the surface instead of depending on page coordinates.</p></article><article className="feature-item"><span className="feature-number">02</span><h3>Material-specific return</h3><p>Cloth settles, rubber rebounds, glass keeps a mark, grass bends, and enamel answers with a tight highlight.</p></article><article className="feature-item"><span className="feature-number">03</span><h3>Bounded frame work</h3><p>Fast interaction data lives in refs and uniforms. The render loop does not schedule React state updates.</p></article><article className="feature-item"><span className="feature-number">04</span><h3>Regions share a poke</h3><p>The LinkedIn-style tile uses the public region manifest: an enamel badge and glass glyph receive the same contact.</p></article></div></section>
 
-        <section className="code-section section-block" aria-labelledby="code-title"><div className="section-heading"><p className="eyebrow">START SMALL</p><h2 id="code-title">Own the Canvas. Add a surface.</h2></div><div className="code-panel"><div className="code-panel-heading"><span>surface.tsx</span><button className="text-button" type="button" onClick={copyExample}>Copy example</button></div><pre><code>{code}</code></pre></div></section>
+        <section className="code-section section-block" aria-labelledby="code-title"><div className="section-heading"><p className="eyebrow">START SMALL</p><h2 id="code-title">Own the Canvas. Add a surface.</h2></div><div className="code-panel"><div className="code-panel-heading"><span>surface.tsx</span><button className="text-button" type="button" onClick={copyExample}>{copyStatus}</button></div><pre><code>{code}</code></pre></div></section>
         <section className="install-section section-block" id="install" aria-labelledby="install-title"><div><p className="eyebrow">R3F PEERS STAY EXTERNAL</p><h2 id="install-title">Install the tactile layer.</h2><p>React, Three, and React Three Fiber remain consumer-owned peer dependencies.</p></div><code className="install-command">{install}</code></section>
       </main>
       <footer className="site-footer"><span>Feelable Materials / interactive library demonstration</span><span>UQ Reality Labs</span><a href="https://github.com/uqrealitylabs/feelable-materials" rel="noreferrer">Source on GitHub</a></footer>
