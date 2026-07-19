@@ -28,7 +28,7 @@
     "repo:check:layout": "node tools/scripts/repo/validate-layout.ts",
     "config:check": "npm run release:validate",
     "check:no-js": "node tools/scripts/assert-no-js.ts",
-    "check:workflows": "node tools/scripts/assert-actions-pinned.ts",
+    "check:workflows": "zizmor .github/workflows",
     "typecheck": "tsc --noEmit",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
