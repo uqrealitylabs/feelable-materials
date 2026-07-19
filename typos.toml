@@ -1,0 +1,29 @@
+[default]
+locale = "en-us"
+extend-ignore-re = ["(?i)^[a-f0-9]{40,}$"]
+
+[default.extend-words]
+center = "center"
+centered = "centered"
+Fiber = "Fiber"
+FIBER = "FIBER"
+organization = "organization"
+Organization = "Organization"
+organizations = "organizations"
+serialize = "serialize"
+analyze = "analyze"
+optimize = "optimize"
+metalness = "metalness"
+catalog = "catalog"
+Catalog = "Catalog"
+licence = "licence"
+behaviour = "behaviour"
+Behaviour = "Behaviour"
+organiser = "organiser"
+organisation = "organisation"
+colours = "colours"
+colour = "colour"
+normalised = "normalised"
+
+[files]
+extend-exclude = ["node_modules/**", "dist/**", "coverage/**", "demo-dist/**", "test-results/**", "artifacts/**", "LICENSE"]
