@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.3.0](https://github.com/uqrealitylabs/feelable-materials/compare/v0.2.1...v0.3.0) (2026-07-18)
+
+
+### Features
+
+* add showcase demo ([596dfe2](https://github.com/uqrealitylabs/feelable-materials/commit/596dfe27c1e857ad3a6eb74dd6849a48afde694c))
+
+
+### Bug Fixes
+
+* handle demo clipboard failures ([a538477](https://github.com/uqrealitylabs/feelable-materials/commit/a538477fc2507f91f1e19d7615cc2fa274936aaa))
+
 ## [0.2.1](https://github.com/uqrealitylabs/feelable-materials/compare/v0.2.0...v0.2.1) (2026-07-18)
 
 
