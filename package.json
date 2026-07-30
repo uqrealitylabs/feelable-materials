@@ -48,7 +48,7 @@
     "test:demo": "node tools/scripts/demo/validate-demo.ts",
     "package:check": "npm pack --dry-run --cache /tmp/npm-cache",
     "test:consumer": "node tools/scripts/consumer-smoke.ts",
-    "security:audit": "npm audit --audit-level=moderate",
+    "security:audit": "npm audit --package-lock-only --audit-level=moderate",
     "security:osv": "node tools/scripts/security/osv-audit.ts",
     "release:validate": "node tools/scripts/release/validate-codenames.ts",
     "release:codename": "node tools/scripts/release/generate-codename.ts",
@@ -90,7 +90,8 @@
     "three": "^0.185.1",
     "typescript": "^7.0.2",
     "vite": "^6.4.3",
-    "vitest": "^4.0.16"
+    "vitest": "^4.0.16",
+    "yaml": "2.9.0"
   },
   "engines": {
     "node": ">=20.19"

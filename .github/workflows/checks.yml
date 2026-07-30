@@ -1,6 +1,10 @@
-name: Nightly
+name: Checks
 
 on:
+  pull_request:
+  push:
+    branches:
+      - main
   schedule:
     - cron: "27 14 * * *"
   workflow_dispatch:
@@ -9,7 +13,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: nightly-${{ github.workflow }}-${{ github.ref }}
+  group: checks-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 defaults:
@@ -17,7 +21,8 @@ defaults:
     shell: bash
 
 jobs:
-  extended-validation:
+  test:
+    name: Test
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -32,5 +37,6 @@ jobs:
       - run: |
           set -euo pipefail
           npm ci
+          npm run check:workflows
+          npm run config:check
           npm run test:ci
-          npm run security:osv

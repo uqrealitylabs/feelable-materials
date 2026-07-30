@@ -1,4 +1,4 @@
-name: Demo Pages
+name: Publish
 
 on:
   push:
@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: pages-${{ github.workflow }}-${{ github.ref }}
+  group: publish-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 defaults:
@@ -18,9 +18,10 @@ defaults:
     shell: bash
 
 jobs:
-  build-demo:
+  build:
+    name: Build demo
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
@@ -33,25 +34,23 @@ jobs:
       - run: |
           set -euo pipefail
           npm ci
-          npm run typecheck
-          npm run lint
-          npm run format:check
-          npm run test:coverage
-          DEMO_BASE_PATH=/feelable-materials/ npm run demo:build
-          DEMO_BASE_PATH=/feelable-materials/ npm run test:demo
+          npm run test:ci
+        env:
+          DEMO_BASE_PATH: /feelable-materials/
       - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: demo-dist
 
-  deploy-demo:
-    needs: build-demo
+  deploy:
+    name: Deploy demo
+    needs: build
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
-      pages: write
-      id-token: write
+      pages: write # Publish the Pages deployment.
+      id-token: write # Authenticate to GitHub Pages.
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
