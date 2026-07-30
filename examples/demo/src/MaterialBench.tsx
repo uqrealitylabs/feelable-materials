@@ -129,12 +129,13 @@ function RenderQualityController({
   onChange: (profile: RenderProfile) => void;
 }) {
   const { gl, size, setDpr, invalidate } = useThree();
+  const { width, height } = size;
   const adaptive = useRef<AdaptiveQualityState | undefined>(undefined);
   const apply = useCallback(
     (resolution?: AdaptiveQualityState["resolution"]) => {
       const profile = resolveRenderProfile(
         quality,
-        readRenderLimits(gl, size, reducedMotion, ceilings),
+        readRenderLimits(gl, { width, height }, reducedMotion, ceilings),
         resolution,
       );
       setDpr(profile.dpr);
@@ -148,7 +149,17 @@ function RenderQualityController({
       invalidate();
       return profile;
     },
-    [ceilings, gl, invalidate, onChange, quality, reducedMotion, setDpr, size],
+    [
+      ceilings,
+      gl,
+      height,
+      invalidate,
+      onChange,
+      quality,
+      reducedMotion,
+      setDpr,
+      width,
+    ],
   );
   useEffect(() => {
     const profile = apply();

@@ -105,8 +105,12 @@ preview.stderr.on("data", (chunk) => {
 try {
   let ready = false;
   for (let attempt = 0; attempt < 40; attempt += 1) {
+    if (preview.exitCode !== null)
+      throw new Error(`demo preview failed\n${output}`);
     try {
-      ready = (await fetch(url, { signal: AbortSignal.timeout(2000) })).ok;
+      ready =
+        /Local:\s+http:\/\/127\.0\.0\.1:4175\//.test(output) &&
+        (await fetch(url, { signal: AbortSignal.timeout(2000) })).ok;
     } catch {}
     if (ready) break;
     await new Promise((resolve) => setTimeout(resolve, 250));
@@ -495,31 +499,36 @@ try {
   }
   if (!adaptiveStart) throw new Error("dynamic quality did not initialize");
   await call("Runtime.evaluate", {
-    expression: `(() => {
+    expression: `new Promise((resolve) => {
       let frames = 5;
       const burn = () => {
-        if (frames-- <= 0) return;
+        if (frames-- <= 0) return requestAnimationFrame(() => resolve());
         const end = performance.now() + 275;
         while (performance.now() < end) {}
         requestAnimationFrame(burn);
       };
       requestAnimationFrame(burn);
-    })()`,
+    })`,
+    awaitPromise: true,
   });
-  let adaptiveEnd = adaptiveStart;
-  for (let attempt = 0; attempt < 240; attempt += 1) {
-    const sample = await sampleFramebuffer();
-    adaptiveEnd = sample?.resolution ?? adaptiveEnd;
-    if (qualityOrder.indexOf(adaptiveEnd) < qualityOrder.indexOf(adaptiveStart))
-      break;
-    await new Promise((resolve) => setTimeout(resolve, 50));
-  }
+  const adaptiveSample = await sampleFramebuffer();
+  const adaptiveEnd = adaptiveSample?.resolution ?? adaptiveStart;
+  const adaptivePreset = resolutionPresets.find(({ id }) => id === adaptiveEnd);
   if (
-    adaptiveStart !== "144p" &&
-    qualityOrder.indexOf(adaptiveEnd) >= qualityOrder.indexOf(adaptiveStart)
+    !fromPage(adaptiveSample, adaptiveUrl) ||
+    adaptiveSample.requested !== "dynamic" ||
+    !adaptivePreset ||
+    adaptiveSample.width !== adaptiveSample.declaredWidth ||
+    adaptiveSample.height !== adaptiveSample.declaredHeight ||
+    adaptiveSample.width > adaptivePreset.width ||
+    adaptiveSample.height > adaptivePreset.height ||
+    adaptiveSample.error !== 0 ||
+    adaptiveSample.colors < minimumColors ||
+    (adaptiveStart !== "144p" &&
+      qualityOrder.indexOf(adaptiveEnd) >= qualityOrder.indexOf(adaptiveStart))
   )
     throw new Error(
-      `dynamic quality did not downshift (${adaptiveStart} -> ${adaptiveEnd})`,
+      `dynamic quality did not settle below ${adaptiveStart} (${JSON.stringify(adaptiveSample)})`,
     );
   results.push(`pass:quality:dynamic:${adaptiveStart}->${adaptiveEnd}`);
   const productionUrl = `${url}?material=${primaryMaterial}#bench`;
