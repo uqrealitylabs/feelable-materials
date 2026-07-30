@@ -2,12 +2,6 @@ name: Release
 
 on:
   workflow_call:
-  workflow_dispatch:
-    inputs:
-      tag:
-        description: Existing stable release tag to recover
-        required: true
-        type: string
 
 permissions:
   contents: read
@@ -35,21 +29,10 @@ jobs:
       tag_name: ${{ steps.resolve.outputs.tag_name }}
       target_sha: ${{ steps.resolve.outputs.target_sha }}
     steps:
-      - name: Validate recovery tag
-        if: github.event_name == 'workflow_dispatch'
-        run: |
-          set -euo pipefail
-          if [[ ! ${RECOVERY_TAG} =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "::error::Recovery tag must be stable SemVer (vMAJOR.MINOR.PATCH)."
-            exit 1
-          fi
-        env:
-          RECOVERY_TAG: ${{ inputs.tag }}
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
-          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.sha }}
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
         with:
           node-version: 22.18.0
@@ -65,7 +48,6 @@ jobs:
         env:
           DEMO_BASE_PATH: /feelable-materials/
       - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
-        if: github.event_name != 'workflow_dispatch'
         id: release
         with:
           config-file: tools/config/release-please.json
@@ -81,13 +63,10 @@ jobs:
       - id: resolve
         run: |
           set -euo pipefail
-          if [[ ${MODE} == recovery ]]; then
-            tag=${RECOVERY_TAG}
-          elif [[ ${NEW_RELEASE} == true ]]; then
-            tag=${NEW_TAG}
-          else
+          if [[ ${NEW_RELEASE} != true ]]; then
             exit 0
           fi
+          tag=${NEW_TAG}
           if [[ ! ${tag} =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "::error::Release tag must be stable SemVer (vMAJOR.MINOR.PATCH)."
             exit 1
@@ -111,10 +90,8 @@ jobs:
           } >> "${GITHUB_OUTPUT}"
         env:
           GH_TOKEN: ${{ github.token }}
-          MODE: ${{ github.event_name == 'workflow_dispatch' && 'recovery' || 'automatic' }}
           NEW_RELEASE: ${{ steps.release.outputs.release_created }}
           NEW_TAG: ${{ steps.release.outputs.tag_name }}
-          RECOVERY_TAG: ${{ inputs.tag }}
 
   npm:
     name: npm publish

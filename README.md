@@ -176,7 +176,7 @@ required.
 
 The first npm release must be published manually with a short-lived granular
 token and two-factor authentication. Then configure npm trusted publishing for
-this repository, `release.yml`, and the `npm` environment, and revoke the
+this repository, `checks.yml`, and the `npm` environment, and revoke the
 bootstrap token. Later releases use GitHub OIDC and provenance without a stored
 npm token.
 
