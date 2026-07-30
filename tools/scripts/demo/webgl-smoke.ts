@@ -494,7 +494,18 @@ try {
     await new Promise((resolve) => setTimeout(resolve, 50));
   }
   if (!adaptiveStart) throw new Error("dynamic quality did not initialize");
-  await call("Emulation.setCPUThrottlingRate", { rate: 6 });
+  await call("Runtime.evaluate", {
+    expression: `(() => {
+      let frames = 5;
+      const burn = () => {
+        if (frames-- <= 0) return;
+        const end = performance.now() + 275;
+        while (performance.now() < end) {}
+        requestAnimationFrame(burn);
+      };
+      requestAnimationFrame(burn);
+    })()`,
+  });
   let adaptiveEnd = adaptiveStart;
   for (let attempt = 0; attempt < 240; attempt += 1) {
     const sample = await sampleFramebuffer();
@@ -503,7 +514,6 @@ try {
       break;
     await new Promise((resolve) => setTimeout(resolve, 50));
   }
-  await call("Emulation.setCPUThrottlingRate", { rate: 1 });
   if (
     adaptiveStart !== "144p" &&
     qualityOrder.indexOf(adaptiveEnd) >= qualityOrder.indexOf(adaptiveStart)
