@@ -2,7 +2,11 @@
   "schemaVersion": 1,
   "requiredPaths": [
     ".github/workflows",
+    "docs/CHANGELOG.md",
+    "docs/CODE_OF_CONDUCT.md",
+    "docs/CONTRIBUTING.md",
     "docs/README.md",
+    "docs/SECURITY.md",
     "examples/demo/index.html",
     "src",
     "tests",
@@ -13,7 +17,13 @@
   ],
   "forbiddenTopLevelPaths": ["config", "configs", "scripts", "cypress"],
   "allowedRootConfigShims": ["biome.json", "tsconfig.json"],
-  "generatedPaths": ["coverage", "demo-dist", "dist", "build", "test-results/cypress"],
+  "generatedPaths": [
+    "coverage",
+    "demo-dist",
+    "dist",
+    "build",
+    "test-results/cypress"
+  ],
   "allowedSingleFileDirs": [
     "src/hooks",
     "src/materials",
@@ -21,8 +31,6 @@
     "tests/unit",
     "tools/scripts/demo",
     "tools/scripts/repo",
-    "tools/scripts/release",
-    "tools/scripts/security",
-    "tools/scripts/wiki"
+    "tools/scripts/security"
   ]
 }
