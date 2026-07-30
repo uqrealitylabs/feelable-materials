@@ -27,14 +27,14 @@ const framebufferExpression = `new Promise((resolve) => requestAnimationFrame(()
   if (!canvas) return resolve(null);
   const gl = canvas.getContext("webgl2") ?? canvas.getContext("webgl");
   if (!gl) return resolve(null);
-  const width = Math.min(128, gl.drawingBufferWidth);
-  const height = Math.min(128, gl.drawingBufferHeight);
+  const width = gl.drawingBufferWidth;
+  const height = Math.min(2, gl.drawingBufferHeight);
   const pixels = new Uint8Array(width * height * 4);
   const priorError = gl.getError();
-  gl.readPixels(Math.floor((gl.drawingBufferWidth - width) / 2), Math.floor((gl.drawingBufferHeight - height) / 2), width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+  gl.readPixels(0, Math.floor((gl.drawingBufferHeight - height) / 2), width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
   const colors = new Set();
   let hash = 2166136261;
-  for (let index = 0; index < pixels.length; index += 16) {
+  for (let index = 0; index < pixels.length; index += 4) {
     const color = (pixels[index] << 16) | (pixels[index + 1] << 8) | pixels[index + 2];
     colors.add(color);
     hash = Math.imul(hash ^ color, 16777619);
