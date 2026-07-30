@@ -373,9 +373,10 @@ try {
         Buffer.from(screenshot.data, "base64"),
       );
     }
-    await dispatchPointer(
-      caseId === "shader-bump" ? "pointercancel" : "pointerup",
-    );
+    if (caseId !== primaryMaterial)
+      await dispatchPointer(
+        caseId === "shader-bump" ? "pointercancel" : "pointerup",
+      );
     let released = false;
     for (let attempt = 0; attempt < 120; attempt += 1) {
       const sample = await sampleFramebuffer();
@@ -467,10 +468,15 @@ try {
   );
 } finally {
   await Promise.all([stop(browser), stop(preview)]);
-  rmSync(profile, {
-    recursive: true,
-    force: true,
-    maxRetries: 20,
-    retryDelay: 100,
-  });
+  try {
+    rmSync(profile, {
+      recursive: true,
+      force: true,
+      maxRetries: 5,
+      retryDelay: 100,
+    });
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code ?? "unknown error";
+    console.warn(`Temporary Chrome profile cleanup failed (${code}).`);
+  }
 }
