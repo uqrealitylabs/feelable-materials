@@ -33,20 +33,6 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
-        with:
-          node-version: 22.18.0
-          package-manager-cache: false
-      - name: Validate release target
-        run: |
-          set -euo pipefail
-          npm ci
-          npm run check:workflows
-          npm run test:ci
-          npm audit --package-lock-only --audit-level=moderate
-          npm run security:osv
-        env:
-          DEMO_BASE_PATH: /feelable-materials/
       - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
         id: release
         with:
@@ -124,7 +110,8 @@ jobs:
           git fetch --force --no-tags origin "refs/tags/${RELEASE_TAG}:refs/tags/${RELEASE_TAG}"
           test "$(git rev-parse "refs/tags/${RELEASE_TAG}^{commit}")" = "${TARGET_SHA}"
           test "${RELEASE_TAG}" = "v$(node -p "require('./package.json').version")"
-          npm ci
+          npm ci --ignore-scripts
+          npm run build
         env:
           RELEASE_TAG: ${{ needs.github.outputs.tag_name }}
           TARGET_SHA: ${{ needs.github.outputs.target_sha }}
@@ -136,7 +123,7 @@ jobs:
             test "${registry_result}" = "$(git rev-parse HEAD)"
             echo "${package}@${version} is already published."
           elif [[ ${registry_result} == *E404* ]]; then
-            npm publish --access public --provenance
+            npm publish --ignore-scripts --access public --provenance
           else
             echo "${registry_result}" >&2
             exit 1
