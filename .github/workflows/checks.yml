@@ -62,9 +62,8 @@ jobs:
     needs: [test, security]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     permissions:
+      actions: write # Required to validate generated release PRs.
       contents: write # Required to create GitHub releases.
       pull-requests: write # Required to maintain the release PR.
       id-token: write # Required for npm trusted publishing.
-    secrets:
-      RELEASE_PLEASE_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
     uses: ./.github/workflows/release.yml

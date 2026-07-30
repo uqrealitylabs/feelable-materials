@@ -2,9 +2,6 @@ name: Release
 
 on:
   workflow_call:
-    secrets:
-      RELEASE_PLEASE_TOKEN:
-        required: true
   workflow_dispatch:
     inputs:
       tag:
@@ -29,6 +26,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 40
     permissions:
+      actions: write # Required to validate generated release PRs.
       contents: write # Required to create GitHub releases.
       pull-requests: write # Required to maintain the release PR.
     environment: release
@@ -56,15 +54,6 @@ jobs:
         with:
           node-version: 22.18.0
           package-manager-cache: false
-      - name: Require release token
-        if: github.event_name != 'workflow_dispatch'
-        run: |
-          if [[ -z ${RELEASE_PLEASE_TOKEN} ]]; then
-            echo "::error::RELEASE_PLEASE_TOKEN is required so release PRs run checks."
-            exit 1
-          fi
-        env:
-          RELEASE_PLEASE_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
       - name: Validate release target
         run: |
           set -euo pipefail
@@ -81,7 +70,14 @@ jobs:
         with:
           config-file: tools/config/release-please.json
           manifest-file: tools/config/release-manifest.json
-          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+      - name: Validate release PR
+        if: steps.release.outputs.prs_created == 'true'
+        run: |
+          branch=$(node -e 'process.stdout.write(JSON.parse(process.env.RELEASE_PR).headBranchName)')
+          gh workflow run checks.yml --ref "${branch}"
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_PR: ${{ steps.release.outputs.pr }}
       - id: resolve
         run: |
           set -euo pipefail
@@ -108,9 +104,11 @@ jobs:
             echo "::error::${tag} must be a published, stable GitHub release."
             exit 1
           fi
-          echo "release_ready=true" >> "${GITHUB_OUTPUT}"
-          echo "tag_name=${tag}" >> "${GITHUB_OUTPUT}"
-          echo "target_sha=${expected}" >> "${GITHUB_OUTPUT}"
+          {
+            echo "release_ready=true"
+            echo "tag_name=${tag}"
+            echo "target_sha=${expected}"
+          } >> "${GITHUB_OUTPUT}"
         env:
           GH_TOKEN: ${{ github.token }}
           MODE: ${{ github.event_name == 'workflow_dispatch' && 'recovery' || 'automatic' }}
