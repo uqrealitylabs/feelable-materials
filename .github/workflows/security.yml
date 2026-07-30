@@ -33,7 +33,6 @@ jobs:
           annotations: true
           online-audits: false
           persona: auditor
-          token: ""
           version: 1.28.0
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
         with:
