@@ -5,6 +5,11 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to retry
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -18,56 +23,104 @@ defaults:
     shell: bash
 
 jobs:
-  release-please:
+  github:
+    name: GitHub release
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
-      contents: write
-      pull-requests: write
+      contents: write # Create the release commit, tag, and release.
+      pull-requests: write # Open and update the release pull request.
+    environment: release
     outputs:
-      release_created: ${{ steps.release.outputs.release_created }}
-      tag_name: ${{ steps.release.outputs.tag_name }}
-    steps:
-      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
-        id: release
-        with:
-          config-file: tools/config/release-please.json
-          manifest-file: tools/config/release-manifest.json
-          token: ${{ secrets.RELEASE_PLEASE_TOKEN || github.token }}
-
-  package-artifacts:
-    needs: release-please
-    if: needs.release-please.outputs.release_created == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    permissions:
-      contents: write
+      release_ready: ${{ steps.resolve.outputs.release_ready }}
+      tag_name: ${{ steps.resolve.outputs.tag_name }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 1
           persist-credentials: false
-          ref: ${{ needs.release-please.outputs.tag_name }}
+      - run: |
+          if [[ -z ${RELEASE_PLEASE_TOKEN} ]]; then
+            echo "::error::RELEASE_PLEASE_TOKEN is required so release PRs run checks."
+            exit 1
+          fi
+        env:
+          RELEASE_PLEASE_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        id: release
+        with:
+          config-file: tools/config/release-please.json
+          manifest-file: tools/config/release-manifest.json
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+      - id: resolve
+        run: |
+          set -euo pipefail
+          tag=${NEW_TAG}
+          if [[ ${NEW_RELEASE} != true ]]; then
+            tag=${RECOVERY_TAG}
+            if [[ -z ${tag} && ${RETRY} == true ]]; then
+              tag="v$(node -p "require('./package.json').version")"
+            fi
+            [[ -n ${tag} ]] || exit 0
+          fi
+          if [[ ! ${tag} =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Release tag must be stable SemVer (vMAJOR.MINOR.PATCH)."
+            exit 1
+          fi
+          if [[ ${NEW_RELEASE} != true ]]; then
+            gh release view "${tag}" >/dev/null
+          fi
+          echo "release_ready=true" >> "${GITHUB_OUTPUT}"
+          echo "tag_name=${tag}" >> "${GITHUB_OUTPUT}"
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NEW_RELEASE: ${{ steps.release.outputs.release_created }}
+          NEW_TAG: ${{ steps.release.outputs.tag_name }}
+          RECOVERY_TAG: ${{ inputs.tag }}
+          RETRY: ${{ github.run_attempt > 1 && 'true' || 'false' }}
+
+  npm:
+    name: npm publish
+    needs: github
+    if: needs.github.outputs.release_ready == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write # Exchange GitHub OIDC for a short-lived npm credential.
+    environment:
+      name: npm
+      url: https://www.npmjs.com/package/@uqrealitylabs/feelable-materials
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+          ref: refs/tags/${{ needs.github.outputs.tag_name }}
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
         with:
           node-version: 24
-          cache: npm
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
       - run: |
           set -euo pipefail
+          test "${RELEASE_TAG}" = "v$(node -p "require('./package.json').version")"
           npm ci
           npm run test:ci
-      - run: |
-          set -euo pipefail
-          mkdir -p artifacts
-          npm pack --pack-destination artifacts
-          cd artifacts
-          shasum -a 256 ./*.tgz > SHA256SUMS
-          find . -maxdepth 1 -type f | sort > package-manifest.txt
-      - run: |
-          set -euo pipefail
-          npm run release:codename -- "${RELEASE_TAG}"
-          node tools/scripts/release/update-github-release.ts "${RELEASE_TAG}"
-          gh release upload "${RELEASE_TAG}" artifacts/* --clobber
         env:
-          GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ needs.release-please.outputs.tag_name }}
+          RELEASE_TAG: ${{ needs.github.outputs.tag_name }}
+      - run: |
+          set -euo pipefail
+          package=$(node -p "require('./package.json').name")
+          version=$(node -p "require('./package.json').version")
+          if registry_result=$(npm view "${package}@${version}" gitHead 2>&1); then
+            test "${registry_result}" = "$(git rev-parse HEAD)"
+            echo "${package}@${version} is already published."
+          elif [[ ${registry_result} == *E404* ]]; then
+            npm publish --access public --provenance
+          else
+            echo "${registry_result}" >&2
+            exit 1
+          fi
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

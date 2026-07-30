@@ -130,6 +130,20 @@ npm run build
 npm run demo:build
 ```
 
+## Releases
+
+`.github/workflows/release.yml` uses Release Please to create the GitHub release,
+then verifies and publishes that tag to npm with provenance. Add a narrowly scoped
+`RELEASE_PLEASE_TOKEN` to the main-only `release` GitHub environment so its pull
+requests trigger `checks.yml`. Retry a failed publish by dispatching `release.yml`
+with the existing release tag.
+
+The first registry publication needs a short-lived granular `NPM_TOKEN` secret in
+the `npm` GitHub environment. After it succeeds, configure the npm trusted
+publisher for `uqrealitylabs/feelable-materials`, workflow `release.yml`,
+environment `npm`, and action `npm publish`; then delete the token and require 2FA
+while disallowing tokens. Trusted publishing requires npm 11.5.1 or newer.
+
 ## Interactive Demo
 
 Run the demo locally with `npm run demo:dev`. A production build is written to
