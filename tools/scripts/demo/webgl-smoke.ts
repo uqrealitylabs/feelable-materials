@@ -428,17 +428,23 @@ try {
   }
   const adaptiveUrl = `${url}?smoke&material=${primaryMaterial}#bench`;
   await call("Page.navigate", { url: adaptiveUrl });
-  const selectQuality = (quality: string) =>
-    call("Runtime.evaluate", {
-      expression: `(() => {
-        const select = document.querySelector(".control-field select");
-        if (!select) return false;
-        select.value = ${JSON.stringify(quality)};
-        select.dispatchEvent(new Event("change", { bubbles: true }));
-        return true;
-      })()`,
-      returnByValue: true,
-    });
+  const selectQuality = async (quality: string) => {
+    for (let attempt = 0; attempt < 80; attempt += 1) {
+      const selected = (await call("Runtime.evaluate", {
+        expression: `(() => {
+          const select = document.querySelector(".control-field select");
+          if (!select) return false;
+          select.value = ${JSON.stringify(quality)};
+          select.dispatchEvent(new Event("change", { bubbles: true }));
+          return true;
+        })()`,
+        returnByValue: true,
+      })) as { result?: { value?: boolean } };
+      if (selected.result?.value) return;
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    throw new Error("render quality control did not render");
+  };
   for (const preset of resolutionPresets) {
     await selectQuality(preset.id);
     let applied: FrameSample | null = null;
