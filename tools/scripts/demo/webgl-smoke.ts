@@ -109,7 +109,8 @@ try {
       throw new Error(`demo preview failed\n${output}`);
     try {
       ready =
-        /Local:\s+http:\/\/127\.0\.0\.1:4175\//.test(output) &&
+        output.includes("Local") &&
+        output.includes("http://127.0.0.1:") &&
         (await fetch(url, { signal: AbortSignal.timeout(2000) })).ok;
     } catch {}
     if (ready) break;
