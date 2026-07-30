@@ -507,6 +507,14 @@ export default function MaterialBench({
   onQualityChange: (profile: RenderProfile) => void;
 }) {
   const [webglAvailable, setWebglAvailable] = useState<boolean>();
+  const [canvasDpr, setCanvasDpr] = useState(1);
+  const handleQualityChange = useCallback(
+    (profile: RenderProfile) => {
+      setCanvasDpr(profile.dpr);
+      onQualityChange(profile);
+    },
+    [onQualityChange],
+  );
   useEffect(() => {
     try {
       const context = document.createElement("canvas").getContext("webgl2");
@@ -530,13 +538,14 @@ export default function MaterialBench({
       frameloop={smoke ? "always" : "demand"}
       orthographic
       camera={{ position: [0, 0, 10], zoom: CAMERA_ZOOM }}
+      dpr={canvasDpr}
     >
       <color attach="background" args={["#10121a"]} />
       <RenderQualityController
         quality={quality}
         reducedMotion={reducedMotion}
         ceilings={ceilings}
-        onChange={onQualityChange}
+        onChange={handleQualityChange}
       />
       <StudioEnvironment detail={detail} />
       {smoke && <SmokeTelemetry item={item} />}
