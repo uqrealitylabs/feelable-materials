@@ -174,11 +174,10 @@ The GitHub Pages demo is deployed at
 `/feelable-materials/` as its production asset base. No proxy mapping is
 required.
 
-The first npm release must be published manually with a short-lived granular
-token and two-factor authentication. Then configure npm trusted publishing for
-this repository, `checks.yml`, and the `npm` environment, and revoke the
-bootstrap token. Later releases use GitHub OIDC and provenance without a stored
-npm token.
+The first npm release requires one manual `npm publish` with npm's two-factor
+browser authentication. Then configure npm trusted publishing for this
+repository, `checks.yml`, and the `npm` environment. Later releases use GitHub
+OIDC and provenance without a stored npm token.
 
 No Chalk font asset is present in the source repositories. The demo therefore
 uses the existing OFL-licensed Pixelify Sans asset in `examples/demo/src/assets`
