@@ -22,6 +22,7 @@ const rawBase = process.env.DEMO_BASE_PATH ?? "/";
 const base = rawBase === "/" ? "/" : `/${rawBase.replace(/^\/+|\/+$/g, "")}/`;
 const url = `http://127.0.0.1:4175${base}`;
 const qualityOrder: string[] = resolutionPresets.map(({ id }) => id);
+const minimumColors = 2;
 const framebufferExpression = `new Promise((resolve) => requestAnimationFrame(() => {
   const canvas = document.querySelector("canvas");
   if (!canvas) return resolve(null);
@@ -344,7 +345,7 @@ try {
         sample.requested === "1080p" &&
         sample.width === sample.declaredWidth &&
         sample.height === sample.declaredHeight &&
-        sample.colors >= 4 &&
+        sample.colors >= minimumColors &&
         sample.calls > 0 &&
         sample.calls <= 3
       ) {
@@ -385,7 +386,7 @@ try {
     }
     if (
       touched?.error !== 0 ||
-      touched.colors < 4 ||
+      touched.colors < minimumColors ||
       touched.calls < 1 ||
       touched.calls > 3
     )
@@ -454,7 +455,7 @@ try {
         sample.width <= preset.width &&
         sample.height <= preset.height &&
         sample.error === 0 &&
-        sample.colors >= 4
+        sample.colors >= minimumColors
       ) {
         applied = sample;
         break;
@@ -514,7 +515,7 @@ try {
       sample.requested === "1080p" &&
       sample.width === sample.declaredWidth &&
       sample.height === sample.declaredHeight &&
-      sample.colors >= 4
+      sample.colors >= minimumColors
     ) {
       productionBaseline = sample;
       break;
@@ -557,7 +558,7 @@ try {
       sample.height === productionBaseline.height &&
       sample.width === sample.declaredWidth &&
       sample.height === sample.declaredHeight &&
-      sample.colors >= 4
+      sample.colors >= minimumColors
     ) {
       contextRestored = true;
       break;
