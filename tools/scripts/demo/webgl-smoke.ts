@@ -442,8 +442,10 @@ try {
   for (const preset of resolutionPresets) {
     await selectQuality(preset.id);
     let applied: FrameSample | null = null;
+    let lastSample: FrameSample | null = null;
     for (let attempt = 0; attempt < 80; attempt += 1) {
       const sample = await sampleFramebuffer();
+      lastSample = sample;
       if (
         fromPage(sample, adaptiveUrl) &&
         sample.requested === preset.id &&
@@ -463,7 +465,9 @@ try {
       await new Promise((resolve) => setTimeout(resolve, 50));
     }
     if (!applied)
-      throw new Error(`${preset.id} framebuffer ceiling was not applied`);
+      throw new Error(
+        `${preset.id} framebuffer ceiling was not applied (${JSON.stringify(lastSample)})`,
+      );
     results.push(
       `pass:quality:${preset.id}:${applied.resolution}:${applied.width}x${applied.height}`,
     );
