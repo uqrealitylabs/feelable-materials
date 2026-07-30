@@ -432,6 +432,7 @@ try {
     for (let attempt = 0; attempt < 80; attempt += 1) {
       const selected = (await call("Runtime.evaluate", {
         expression: `(() => {
+          if (location.href !== ${JSON.stringify(adaptiveUrl)}) return false;
           const select = document.querySelector(".control-field select");
           if (!select) return false;
           select.value = ${JSON.stringify(quality)};
