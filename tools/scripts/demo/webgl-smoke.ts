@@ -2,6 +2,7 @@ import { type ChildProcess, spawn } from "node:child_process";
 import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { resolutionPresets } from "../../../examples/demo/src/render-quality.ts";
 
 const chrome = [
   process.env.CHROME_BIN,
@@ -20,14 +21,17 @@ if (!chrome) {
 const rawBase = process.env.DEMO_BASE_PATH ?? "/";
 const base = rawBase === "/" ? "/" : `/${rawBase.replace(/^\/+|\/+$/g, "")}/`;
 const url = `http://127.0.0.1:4175${base}`;
+const qualityOrder: string[] = resolutionPresets.map(({ id }) => id);
 const framebufferExpression = `new Promise((resolve) => requestAnimationFrame(() => {
   const canvas = document.querySelector("canvas");
   if (!canvas) return resolve(null);
   const gl = canvas.getContext("webgl2") ?? canvas.getContext("webgl");
   if (!gl) return resolve(null);
-  const pixels = new Uint8Array(gl.drawingBufferWidth * gl.drawingBufferHeight * 4);
+  const width = Math.min(128, gl.drawingBufferWidth);
+  const height = Math.min(128, gl.drawingBufferHeight);
+  const pixels = new Uint8Array(width * height * 4);
   const priorError = gl.getError();
-  gl.readPixels(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+  gl.readPixels(Math.floor((gl.drawingBufferWidth - width) / 2), Math.floor((gl.drawingBufferHeight - height) / 2), width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
   const colors = new Set();
   let hash = 2166136261;
   for (let index = 0; index < pixels.length; index += 16) {
@@ -40,6 +44,12 @@ const framebufferExpression = `new Promise((resolve) => requestAnimationFrame(()
     material: canvas.dataset.feelableMaterial ?? "",
     pressure: Number(canvas.dataset.feelablePressure ?? 0),
     calls: Number(canvas.dataset.feelableDraws ?? 0),
+    requested: canvas.dataset.feelableRequested ?? "",
+    resolution: canvas.dataset.feelableResolution ?? "",
+    width: gl.drawingBufferWidth,
+    height: gl.drawingBufferHeight,
+    declaredWidth: Number(canvas.dataset.feelableWidth ?? 0),
+    declaredHeight: Number(canvas.dataset.feelableHeight ?? 0),
     error: priorError || gl.getError(),
     colors: colors.size,
     hash,
@@ -231,6 +241,12 @@ try {
     material: string;
     pressure: number;
     calls: number;
+    requested: string;
+    resolution: string;
+    width: number;
+    height: number;
+    declaredWidth: number;
+    declaredHeight: number;
     error: number;
     colors: number;
     hash: number;
@@ -279,6 +295,16 @@ try {
     throw new Error(`demo catalogue did not render\n${output}`);
   if (new Set(materialIds).size !== materialIds.length)
     throw new Error("demo catalogue IDs must be unique");
+  const qualityOptions = (await call("Runtime.evaluate", {
+    expression:
+      'Array.from(document.querySelectorAll(".control-field select option"), option => option.value)',
+    returnByValue: true,
+  })) as { result?: { value?: string[] } };
+  if (
+    qualityOptions.result?.value?.join(",") !==
+    ["dynamic", ...[...qualityOrder].reverse()].join(",")
+  )
+    throw new Error("render quality options are incomplete or unordered");
 
   const primaryMaterial = materialIds[0] as string;
   const cases = [
@@ -315,6 +341,9 @@ try {
         fromPage(sample, caseUrl) &&
         sample.material === materialId &&
         sample.error === 0 &&
+        sample.requested === "1080p" &&
+        sample.width === sample.declaredWidth &&
+        sample.height === sample.declaredHeight &&
         sample.colors >= 4 &&
         sample.calls > 0 &&
         sample.calls <= 3
@@ -396,6 +425,81 @@ try {
     const status = `pass:${caseId}:${touched.calls}:${touched.colors}:${touched.pressure.toFixed(2)}`;
     results.push(status);
   }
+  const adaptiveUrl = `${url}?smoke&material=${primaryMaterial}#bench`;
+  await call("Page.navigate", { url: adaptiveUrl });
+  const selectQuality = (quality: string) =>
+    call("Runtime.evaluate", {
+      expression: `(() => {
+        const select = document.querySelector(".control-field select");
+        if (!select) return false;
+        select.value = ${JSON.stringify(quality)};
+        select.dispatchEvent(new Event("change", { bubbles: true }));
+        return true;
+      })()`,
+      returnByValue: true,
+    });
+  for (const preset of resolutionPresets) {
+    await selectQuality(preset.id);
+    let applied: FrameSample | null = null;
+    for (let attempt = 0; attempt < 80; attempt += 1) {
+      const sample = await sampleFramebuffer();
+      if (
+        fromPage(sample, adaptiveUrl) &&
+        sample.requested === preset.id &&
+        qualityOrder.includes(sample.resolution) &&
+        qualityOrder.indexOf(sample.resolution) <=
+          qualityOrder.indexOf(preset.id) &&
+        sample.width === sample.declaredWidth &&
+        sample.height === sample.declaredHeight &&
+        sample.width <= preset.width &&
+        sample.height <= preset.height &&
+        sample.error === 0 &&
+        sample.colors >= 4
+      ) {
+        applied = sample;
+        break;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    if (!applied)
+      throw new Error(`${preset.id} framebuffer ceiling was not applied`);
+    results.push(
+      `pass:quality:${preset.id}:${applied.resolution}:${applied.width}x${applied.height}`,
+    );
+  }
+  await selectQuality("dynamic");
+  let adaptiveStart = "";
+  for (let attempt = 0; attempt < 80; attempt += 1) {
+    const sample = await sampleFramebuffer();
+    if (
+      fromPage(sample, adaptiveUrl) &&
+      sample.requested === "dynamic" &&
+      qualityOrder.includes(sample.resolution)
+    ) {
+      adaptiveStart = sample.resolution;
+      break;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  if (!adaptiveStart) throw new Error("dynamic quality did not initialize");
+  await call("Emulation.setCPUThrottlingRate", { rate: 6 });
+  let adaptiveEnd = adaptiveStart;
+  for (let attempt = 0; attempt < 240; attempt += 1) {
+    const sample = await sampleFramebuffer();
+    adaptiveEnd = sample?.resolution ?? adaptiveEnd;
+    if (qualityOrder.indexOf(adaptiveEnd) < qualityOrder.indexOf(adaptiveStart))
+      break;
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  await call("Emulation.setCPUThrottlingRate", { rate: 1 });
+  if (
+    adaptiveStart !== "144p" &&
+    qualityOrder.indexOf(adaptiveEnd) >= qualityOrder.indexOf(adaptiveStart)
+  )
+    throw new Error(
+      `dynamic quality did not downshift (${adaptiveStart} -> ${adaptiveEnd})`,
+    );
+  results.push(`pass:quality:dynamic:${adaptiveStart}->${adaptiveEnd}`);
   const productionUrl = `${url}?material=${primaryMaterial}#bench`;
   await call("Page.navigate", { url: productionUrl });
   let productionBaseline: FrameSample | null = null;
@@ -407,6 +511,9 @@ try {
     if (
       fromPage(sample, productionUrl) &&
       sample.error === 0 &&
+      sample.requested === "1080p" &&
+      sample.width === sample.declaredWidth &&
+      sample.height === sample.declaredHeight &&
       sample.colors >= 4
     ) {
       productionBaseline = sample;
@@ -444,6 +551,12 @@ try {
     if (
       fromPage(sample, productionUrl) &&
       sample.error === 0 &&
+      sample.requested === productionBaseline.requested &&
+      sample.resolution === productionBaseline.resolution &&
+      sample.width === productionBaseline.width &&
+      sample.height === productionBaseline.height &&
+      sample.width === sample.declaredWidth &&
+      sample.height === sample.declaredHeight &&
       sample.colors >= 4
     ) {
       contextRestored = true;

@@ -1,5 +1,5 @@
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   type BufferAttribute,
   DataTexture,
@@ -7,17 +7,27 @@ import {
   type Group,
   PlaneGeometry,
   PMREMGenerator,
+  type WebGLRenderer,
   type WebGLRenderTarget,
 } from "three";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import type { PokeState } from "../../../dist/index.js";
 import { FeelableSurface, GrassLogoSurface } from "../../../dist/react.js";
 import { type Cloth, clothIsMoving, createCloth, stepCloth } from "./cloth";
+import type { DemoMaterialItem } from "./demo-data";
 import {
-  type DemoMaterialItem,
-  type Quality,
-  qualityCounts,
-} from "./demo-data";
+  type AdaptiveQualityState,
+  createAdaptiveQualityState,
+  framebufferPixelBudget,
+  type RenderCeilings,
+  type RenderLimits,
+  type RenderProfile,
+  type RenderQuality,
+  resolveRenderProfile,
+  type SceneDetail,
+  sampleAdaptiveQuality,
+  sceneDetailForQuality,
+} from "./render-quality";
 
 const CAMERA_ZOOM = 70;
 const WIDTH = 6.4;
@@ -55,6 +65,113 @@ const smokeNormalMap =
 if (smokeNormalMap) smokeNormalMap.needsUpdate = true;
 const grassMask = (x: number, y: number) =>
   x > 0.04 && x < 0.96 && y > 0.08 && y < 0.92;
+const sceneSettings = {
+  low: { columns: 16, rows: 10, grass: 180, transmission: 0.5 },
+  standard: { columns: 20, rows: 12, grass: 420, transmission: 0.75 },
+  high: { columns: 28, rows: 18, grass: 720, transmission: 1 },
+} satisfies Record<
+  SceneDetail,
+  { columns: number; rows: number; grass: number; transmission: number }
+>;
+
+type NavigatorHints = Navigator & {
+  deviceMemory?: number | undefined;
+  connection?: { saveData?: boolean | undefined } | undefined;
+};
+
+function readRenderLimits(
+  gl: WebGLRenderer,
+  size: { width: number; height: number },
+  reducedMotion: boolean,
+  ceilings: RenderCeilings,
+): RenderLimits {
+  const context = gl.getContext();
+  const viewport = context.getParameter(context.MAX_VIEWPORT_DIMS) as
+    | ArrayLike<number>
+    | undefined;
+  const hints =
+    typeof navigator === "undefined"
+      ? undefined
+      : (navigator as NavigatorHints);
+  return {
+    ...ceilings,
+    cssWidth: size.width,
+    cssHeight: size.height,
+    devicePixelRatio:
+      typeof window === "undefined" ? 1 : window.devicePixelRatio,
+    maxWidth: Math.min(
+      gl.capabilities.maxTextureSize,
+      Number(context.getParameter(context.MAX_RENDERBUFFER_SIZE)),
+      Number(viewport?.[0]),
+    ),
+    maxHeight: Math.min(
+      gl.capabilities.maxTextureSize,
+      Number(context.getParameter(context.MAX_RENDERBUFFER_SIZE)),
+      Number(viewport?.[1]),
+    ),
+    maxPixels: framebufferPixelBudget(hints?.deviceMemory),
+    deviceMemory: hints?.deviceMemory,
+    hardwareConcurrency: hints?.hardwareConcurrency,
+    reducedMotion,
+    saveData: hints?.connection?.saveData,
+  };
+}
+
+function RenderQualityController({
+  quality,
+  reducedMotion,
+  ceilings,
+  onChange,
+}: {
+  quality: RenderQuality;
+  reducedMotion: boolean;
+  ceilings: RenderCeilings;
+  onChange: (profile: RenderProfile) => void;
+}) {
+  const { gl, size, setDpr, invalidate } = useThree();
+  const adaptive = useRef<AdaptiveQualityState | undefined>(undefined);
+  const apply = useCallback(
+    (resolution?: AdaptiveQualityState["resolution"]) => {
+      const profile = resolveRenderProfile(
+        quality,
+        readRenderLimits(gl, size, reducedMotion, ceilings),
+        resolution,
+      );
+      setDpr(profile.dpr);
+      gl.domElement.dataset.feelableRequested = quality;
+      gl.domElement.dataset.feelableResolution = profile.effective;
+      gl.domElement.dataset.feelableWidth = String(profile.width);
+      gl.domElement.dataset.feelableHeight = String(profile.height);
+      onChange(profile);
+      invalidate();
+      return profile;
+    },
+    [ceilings, gl, invalidate, onChange, quality, reducedMotion, setDpr, size],
+  );
+  useEffect(() => {
+    const profile = apply();
+    adaptive.current =
+      quality === "dynamic"
+        ? createAdaptiveQualityState(profile.effective)
+        : undefined;
+    const restore = () => {
+      const restored = apply(quality === "dynamic" ? "360p" : undefined);
+      if (adaptive.current)
+        adaptive.current = createAdaptiveQualityState(restored.effective);
+    };
+    gl.domElement.addEventListener("webglcontextrestored", restore);
+    return () =>
+      gl.domElement.removeEventListener("webglcontextrestored", restore);
+  }, [apply, gl, quality]);
+  useFrame((_state, delta) => {
+    const state = adaptive.current;
+    if (!state) return;
+    const previous = state.resolution;
+    const next = sampleAdaptiveQuality(state, delta * 1000);
+    if (next !== previous) state.resolution = apply(next).effective;
+  });
+  return null;
+}
 
 function updateClothNormals(geometry: PlaneGeometry) {
   const positions = geometry.getAttribute("position").array as Float32Array;
@@ -153,20 +270,16 @@ function SurfaceMaterial({ item }: { item: DemoMaterialItem }) {
 
 function BaseSurface({
   item,
-  quality,
+  detail,
   reducedMotion,
 }: {
   item: DemoMaterialItem;
-  quality: Quality;
+  detail: SceneDetail;
   reducedMotion: boolean;
 }) {
   if (item.material === "cloth")
     return (
-      <ClothSurface
-        item={item}
-        quality={quality}
-        reducedMotion={reducedMotion}
-      />
+      <ClothSurface item={item} detail={detail} reducedMotion={reducedMotion} />
     );
   return (
     <FeelableSurface material={item.material} reducedMotion={reducedMotion}>
@@ -178,15 +291,14 @@ function BaseSurface({
 
 function ClothSurface({
   item,
-  quality,
+  detail,
   reducedMotion,
 }: {
   item: DemoMaterialItem;
-  quality: Quality;
+  detail: SceneDetail;
   reducedMotion: boolean;
 }) {
-  const columns = quality === "low" ? 16 : quality === "standard" ? 20 : 28;
-  const rows = quality === "low" ? 10 : quality === "standard" ? 12 : 18;
+  const { columns, rows } = sceneSettings[detail];
   const cloth = useMemo(
     () =>
       createCloth(
@@ -284,7 +396,7 @@ function GrassSurface({
         <boxGeometry args={[WIDTH, HEIGHT, 0.1]} />
         <meshStandardMaterial color="#254d2d" roughness={1} />
       </mesh>
-      <group position={[0, 0, 0.08]} scale={[WIDTH, HEIGHT, 1]}>
+      <group position={[0, 0, 0.05]} scale={[WIDTH, HEIGHT, 1]}>
         <GrassLogoSurface
           count={count}
           seed={17}
@@ -292,7 +404,7 @@ function GrassSurface({
           reducedMotion={reducedMotion}
         >
           <planeGeometry args={[1, 1]} />
-          <meshStandardMaterial {...item.finish} />
+          <meshStandardMaterial {...item.finish} side={DoubleSide} />
         </GrassLogoSurface>
       </group>
     </group>
@@ -301,11 +413,11 @@ function GrassSurface({
 
 function SelectedSurface({
   item,
-  quality,
+  detail,
   reducedMotion,
 }: {
   item: DemoMaterialItem;
-  quality: Quality;
+  detail: SceneDetail;
   reducedMotion: boolean;
 }) {
   const { size } = useThree();
@@ -318,7 +430,7 @@ function SelectedSurface({
     <group scale={scale} rotation={[0.07, -0.1, -0.012]}>
       {item.material === "grass" ? (
         <GrassSurface
-          count={qualityCounts[quality]}
+          count={sceneSettings[detail].grass}
           item={item}
           reducedMotion={reducedMotion}
         />
@@ -326,7 +438,7 @@ function SelectedSurface({
         <BaseSurface
           key={item.id}
           item={item}
-          quality={quality}
+          detail={detail}
           reducedMotion={reducedMotion}
         />
       )}
@@ -334,13 +446,12 @@ function SelectedSurface({
   );
 }
 
-function StudioEnvironment({ quality }: { quality: Quality }) {
+function StudioEnvironment({ detail }: { detail: SceneDetail }) {
   const { gl, invalidate, scene } = useThree();
   useEffect(() => {
-    gl.transmissionResolutionScale =
-      quality === "low" ? 0.5 : quality === "standard" ? 0.75 : 1;
+    gl.transmissionResolutionScale = sceneSettings[detail].transmission;
     invalidate();
-  }, [gl, invalidate, quality]);
+  }, [detail, gl, invalidate]);
   useEffect(() => {
     let target: WebGLRenderTarget | undefined;
     const build = () => {
@@ -384,10 +495,14 @@ export default function MaterialBench({
   item,
   quality,
   reducedMotion,
+  ceilings,
+  onQualityChange,
 }: {
   item: DemoMaterialItem;
-  quality: Quality;
+  quality: RenderQuality;
   reducedMotion: boolean;
+  ceilings: RenderCeilings;
+  onQualityChange: (profile: RenderProfile) => void;
 }) {
   const [webglAvailable, setWebglAvailable] = useState<boolean>();
   useEffect(() => {
@@ -405,6 +520,7 @@ export default function MaterialBench({
         {webglAvailable === false ? "No WebGL." : "Loading…"}
       </div>
     );
+  const detail = sceneDetailForQuality(quality);
   return (
     <Canvas
       aria-label={`Interactive ${item.label} preview`}
@@ -412,19 +528,23 @@ export default function MaterialBench({
       frameloop={smoke ? "always" : "demand"}
       orthographic
       camera={{ position: [0, 0, 10], zoom: CAMERA_ZOOM }}
-      dpr={
-        quality === "low" ? 1 : quality === "standard" ? [1, 1.5] : [1, 1.75]
-      }
+      dpr={1}
     >
       <color attach="background" args={["#10121a"]} />
-      <StudioEnvironment quality={quality} />
+      <RenderQualityController
+        quality={quality}
+        reducedMotion={reducedMotion}
+        ceilings={ceilings}
+        onChange={onQualityChange}
+      />
+      <StudioEnvironment detail={detail} />
       {smoke && <SmokeTelemetry item={item} />}
       <hemisphereLight args={["#d8f6ff", "#332d45", 0.55]} />
       <directionalLight position={[3, 4, 6]} intensity={2.35} />
       <directionalLight position={[-4, -2, 3]} intensity={0.5} />
       <SelectedSurface
         item={item}
-        quality={quality}
+        detail={detail}
         reducedMotion={reducedMotion}
       />
     </Canvas>
