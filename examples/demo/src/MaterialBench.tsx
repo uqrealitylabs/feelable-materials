@@ -138,6 +138,8 @@ function RenderQualityController({
         resolution,
       );
       setDpr(profile.dpr);
+      profile.width = gl.domElement.width;
+      profile.height = gl.domElement.height;
       gl.domElement.dataset.feelableRequested = quality;
       gl.domElement.dataset.feelableResolution = profile.effective;
       gl.domElement.dataset.feelableWidth = String(profile.width);
@@ -528,7 +530,6 @@ export default function MaterialBench({
       frameloop={smoke ? "always" : "demand"}
       orthographic
       camera={{ position: [0, 0, 10], zoom: CAMERA_ZOOM }}
-      dpr={1}
     >
       <color attach="background" args={["#10121a"]} />
       <RenderQualityController
