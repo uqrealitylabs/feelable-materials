@@ -36,6 +36,9 @@ export function usePokeSurface(
   options: UsePokeSurfaceOptions = {},
 ) {
   const invalidate = useThree((state) => state.invalidate);
+  const eventTarget = useThree(
+    (state) => state.events.connected ?? state.gl.domElement,
+  );
   const config = getMaterialConfig(material);
   const stateRef = useRef(createPokeState(options.initialState));
   const uniformsRef = useRef(createPokeUniforms(stateRef.current));
@@ -57,19 +60,16 @@ export function usePokeSurface(
 
   const pokeAt = useCallback(
     (event: PointerUvEvent, pressure: number) => {
-      if (reduced.reducedMotion) return;
-
       const uv = readPointerUv(event);
       applyPoke(stateRef.current, uv.x, uv.y, pressure * reduced.pressureScale);
       syncPokeUniforms(uniformsRef.current, stateRef.current);
       invalidate();
     },
-    [invalidate, reduced.pressureScale, reduced.reducedMotion],
+    [invalidate, reduced.pressureScale],
   );
 
   const release = useCallback(
     (event?: PointerUvEvent) => {
-      event?.stopPropagation?.();
       const pressed = pressedPointerRef.current;
       const pointerId = event?.pointerId ?? pressed ?? 0;
       if (
@@ -78,6 +78,7 @@ export function usePokeSurface(
         pointerId !== pressed
       )
         return;
+      if (pressed !== null) event?.stopPropagation?.();
       try {
         captureTargetRef.current?.releasePointerCapture?.(pointerId);
       } catch {
@@ -93,6 +94,22 @@ export function usePokeSurface(
   );
 
   useEffect(() => {
+    const releaseNativePointer = (event: PointerEvent) => {
+      if (event.pointerId === pressedPointerRef.current)
+        release({ pointerId: event.pointerId });
+    };
+    eventTarget.addEventListener("pointercancel", releaseNativePointer);
+    eventTarget.addEventListener("lostpointercapture", releaseNativePointer);
+    return () => {
+      eventTarget.removeEventListener("pointercancel", releaseNativePointer);
+      eventTarget.removeEventListener(
+        "lostpointercapture",
+        releaseNativePointer,
+      );
+    };
+  }, [eventTarget, release]);
+
+  useEffect(() => {
     if (!reduced.reducedMotion) return;
     release();
     stateRef.current.pressure = 0;
@@ -104,18 +121,18 @@ export function usePokeSurface(
   const handlers = useMemo(
     () => ({
       onPointerMove: (event: PointerUvEvent) => {
-        event.stopPropagation?.();
+        if (reduced.reducedMotion) return;
         const pressed = pressedPointerRef.current;
         if (pressed !== null && (event.pointerId ?? 0) !== pressed) return;
+        event.stopPropagation?.();
         pokeAt(
           event,
           pressed === null
-            ? (options.hoverPressure ?? 0.25)
+            ? Math.min(options.hoverPressure ?? 0.25, 0.55)
             : (options.pressPressure ?? 1),
         );
       },
       onPointerDown: (event: PointerUvEvent) => {
-        event.stopPropagation?.();
         if (reduced.reducedMotion) return;
         const pointerId = event.pointerId ?? 0;
         if (
@@ -123,6 +140,7 @@ export function usePokeSurface(
           pressedPointerRef.current !== pointerId
         )
           return;
+        event.stopPropagation?.();
         pressedPointerRef.current = pointerId;
         captureTargetRef.current = undefined;
         try {
@@ -139,8 +157,13 @@ export function usePokeSurface(
       onPointerCancel: release,
       onLostPointerCapture: release,
       onPointerLeave: (event?: PointerUvEvent) => {
-        if (captureTargetRef.current) event?.stopPropagation?.();
-        else release(event);
+        if (!captureTargetRef.current) return release(event);
+        if (
+          event?.pointerId !== undefined &&
+          event.pointerId !== pressedPointerRef.current
+        )
+          return;
+        event?.stopPropagation?.();
       },
     }),
     [
@@ -163,7 +186,7 @@ export function usePokeSurface(
       syncPokeUniforms(uniformsRef.current, stateRef.current, velocity);
       const state = stateRef.current;
       const stainChanging =
-        config.kind === "glass" && state.targetPressure > 0
+        config.kind === "glass" && state.targetPressure > 0.55
           ? state.stains < 1
           : state.stains > 0;
       if (

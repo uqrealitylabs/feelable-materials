@@ -1,4 +1,10 @@
-import { createElement, type ReactNode, useCallback, useMemo } from "react";
+import {
+  createElement,
+  type ReactElement,
+  type ReactNode,
+  useCallback,
+  useMemo,
+} from "react";
 import {
   createGrassBladeInstances,
   type GrassBladeOptions,
@@ -62,7 +68,7 @@ export function GrassLogoSurface({
   count: rawCount,
   mask,
   seed,
-}: GrassLogoSurfaceProps) {
+}: GrassLogoSurfaceProps): ReactElement {
   const count = resolveGrassBladeCount(rawCount, reducedMotion);
   const blades = useMemo(
     () => createGrassBladeInstances({ count, mask, seed }),
@@ -84,10 +90,7 @@ export function GrassLogoSurface({
     },
     createElement("planeGeometry", { args: [1, 1] }),
     createElement("meshBasicMaterial", {
-      transparent: true,
-      opacity: 0,
-      depthWrite: false,
-      colorWrite: false,
+      visible: false,
     }),
     createElement(
       "instancedMesh",

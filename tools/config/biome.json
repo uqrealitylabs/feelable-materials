@@ -4,6 +4,9 @@
   "files": {
     "includes": [
       "src/**",
+      "examples/demo/src/**/*.css",
+      "examples/demo/src/**/*.ts",
+      "examples/demo/src/**/*.tsx",
       "tests/**",
       "tools/**",
       "package.json",

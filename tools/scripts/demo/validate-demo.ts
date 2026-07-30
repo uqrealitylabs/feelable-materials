@@ -5,6 +5,7 @@ const htmlPath = "demo-dist/index.html";
 const sourcePaths = [
   "examples/demo/src/main.tsx",
   "examples/demo/src/MaterialBench.tsx",
+  "examples/demo/src/demo-data.ts",
 ];
 const issues: string[] = [];
 const expectedBase = process.env.DEMO_BASE_PATH;
@@ -51,13 +52,14 @@ const source = sourcePaths
   .join("\n");
 for (const text of [
   "FeelableSurface",
-  'frameloop="demand"',
   "vite:preloadError",
   "../../../dist/index.js",
   "../../../dist/react.js",
 ]) {
   if (!source.includes(text)) issues.push(`demo source is missing ${text}`);
 }
+if (!source.includes('frameloop={smoke ? "always" : "demand"}'))
+  issues.push("demo must use demand rendering outside smoke tests");
 
 if (issues.length > 0) {
   console.error(issues.join("\n"));

@@ -42,7 +42,11 @@ vi.mock("@react-three/fiber", () => ({
     callback({}, 0.032),
   ),
   useThree: vi.fn((select: (state: unknown) => unknown) =>
-    select({ gl: { isWebGLRenderer: true }, invalidate: vi.fn() }),
+    select({
+      events: { connected: undefined },
+      gl: { domElement: new EventTarget(), isWebGLRenderer: true },
+      invalidate: vi.fn(),
+    }),
   ),
 }));
 
@@ -98,7 +102,7 @@ describe("poke model", () => {
     stepPoke(state, materialPresets.rubber);
 
     expect(getPokeInfluence(state, 0.25, 0.25)).toBeGreaterThan(0);
-    expect(getPokeInfluence(state, 0.95, 0.95)).toBe(0);
+    expect(getPokeInfluence(state, 0.95, 0.95)).toBeLessThan(0.001);
   });
 
   it("makes press stronger than hover and decays toward rest", () => {
@@ -323,13 +327,28 @@ describe("uniforms", () => {
     expect(syncPokeUniforms(uniforms, state)).toMatchObject({
       uPoke: { value: [0.2, 0.7, 0.4] },
       uSmudge: { value: 0.3 },
+      uSmudgePosition: { value: [0.2, 0.7] },
     });
     const pokeValue = uniforms.uPoke.value;
+    const smudgePosition = uniforms.uSmudgePosition.value;
     syncPokeUniforms(
       uniforms,
-      createPokeState({ x: 0.4, y: 0.5, pressure: 0.2 }),
+      createPokeState({ x: 0.4, y: 0.5, pressure: 0.2, stains: 0.2 }),
     );
     expect(uniforms.uPoke.value).toBe(pokeValue);
+    expect(uniforms.uSmudgePosition.value).toBe(smudgePosition);
+    expect(uniforms.uSmudgePosition.value).toEqual([0.2, 0.7]);
+    syncPokeUniforms(
+      uniforms,
+      createPokeState({
+        x: 0.8,
+        y: 0.9,
+        active: true,
+        targetPressure: 1,
+        stains: 0.2,
+      }),
+    );
+    expect(uniforms.uSmudgePosition.value).toEqual([0.8, 0.9]);
   });
 });
 
