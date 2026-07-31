@@ -35,5 +35,6 @@ jobs:
           npm ci
       - run: |
           set -euo pipefail
+          npm run check:workflows
           npm run config:check
           npm run test:ci
