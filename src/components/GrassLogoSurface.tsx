@@ -1,4 +1,4 @@
-import { createElement, type ReactNode, useMemo } from "react";
+import { createElement, type ReactNode, useCallback, useMemo } from "react";
 import {
   createGrassBladeInstances,
   type GrassBladeOptions,
@@ -8,13 +8,56 @@ import { FeelableSurface } from "./FeelableSurface.js";
 
 export type GrassLogoSurfaceProps = GrassBladeOptions & {
   children?: ReactNode | undefined;
-  ariaLabel?: string | undefined;
   reducedMotion?: boolean | undefined;
 };
 
+type MatrixLike = {
+  set: (...values: number[]) => MatrixLike;
+};
+
+type InstancedMeshLike = {
+  count: number;
+  matrix: { clone: () => MatrixLike };
+  instanceMatrix: { needsUpdate: boolean };
+  setMatrixAt: (index: number, matrix: MatrixLike) => void;
+};
+
+const ignoreRaycast = () => undefined;
+
+export function applyGrassBladeMatrices(
+  mesh: InstancedMeshLike,
+  blades: ReturnType<typeof createGrassBladeInstances>,
+) {
+  const matrix = mesh.matrix.clone();
+  blades.forEach((blade, index) => {
+    const cos = Math.cos(blade.angle);
+    const sin = Math.sin(blade.angle);
+    matrix.set(
+      cos * blade.width,
+      -sin * blade.height,
+      0,
+      blade.x - 0.5,
+      sin * blade.width,
+      cos * blade.height,
+      0,
+      blade.y - 0.5,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      0,
+      1,
+    );
+    mesh.setMatrixAt(index, matrix);
+  });
+  mesh.count = blades.length;
+  mesh.instanceMatrix.needsUpdate = true;
+}
+
 export function GrassLogoSurface({
   children,
-  ariaLabel,
   reducedMotion,
   count: rawCount,
   mask,
@@ -25,19 +68,33 @@ export function GrassLogoSurface({
     () => createGrassBladeInstances({ count, mask, seed }),
     [count, mask, seed],
   );
+  const setMesh = useCallback(
+    (mesh: InstancedMeshLike | null) => {
+      if (mesh) applyGrassBladeMatrices(mesh, blades);
+    },
+    [blades],
+  );
 
   return createElement(
     FeelableSurface,
     {
       material: "grass",
-      ariaLabel,
       reducedMotion,
       userData: { grassBlades: blades },
     },
+    createElement("planeGeometry", { args: [1, 1] }),
+    createElement("meshBasicMaterial", {
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+      colorWrite: false,
+    }),
     createElement(
       "instancedMesh",
       {
+        ref: setMesh,
         args: [undefined, undefined, blades.length],
+        raycast: ignoreRaycast,
         frustumCulled: false,
         userData: { grassBlades: blades },
       },

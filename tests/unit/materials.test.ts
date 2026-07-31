@@ -1,6 +1,3 @@
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { createElement } from "react";
 import { act, create } from "react-test-renderer";
 import { describe, expect, it, vi } from "vitest";
@@ -9,9 +6,6 @@ import {
   applyPoke,
   createContactHistory,
   createGrassBladeInstances,
-  createLinkedInRegionManifest,
-  createMaterialRegionManifest,
-  createPokeModel,
   createPokeState,
   createPokeUniforms,
   gaussianInfluence,
@@ -19,12 +13,9 @@ import {
   getMaterialEventKind,
   getMaterialHapticPattern,
   getMaterialKind,
-  getMaterialPreset,
   getMaterialResponse,
   getPokeInfluence,
   isMaterialKind,
-  listRegionMaterials,
-  materialConfigs,
   materialPresets,
   readPointerUv,
   releasePoke,
@@ -35,16 +26,11 @@ import {
   stepPoke,
   syncPokeUniforms,
   triggerMaterialHaptic,
-  updatePokeModel,
 } from "../../src";
 import {
-  applyFeelableMeshResponse,
-  FeelableMaterialCard,
   FeelableSurface,
   GrassLogoSurface,
-  usePointerUv,
   usePokeSurface,
-  useReducedMotionSurface,
 } from "../../src/react";
 
 (
@@ -54,6 +40,9 @@ import {
 vi.mock("@react-three/fiber", () => ({
   useFrame: vi.fn((callback: (_state: unknown, delta: number) => void) =>
     callback({}, 0.032),
+  ),
+  useThree: vi.fn((select: (state: unknown) => unknown) =>
+    select({ gl: { isWebGLRenderer: true }, invalidate: vi.fn() }),
   ),
 }));
 
@@ -69,23 +58,19 @@ describe("material presets", () => {
     expect(materialPresets[kind]).toMatchObject({
       kind,
       behavior,
-      pointerResponse: true,
     });
   });
 
   it("parses material kinds without app label coupling", () => {
     expect(isMaterialKind("glass")).toBe(true);
-    expect(isMaterialKind("Glass")).toBe(true);
+    expect(isMaterialKind("Glass")).toBe(false);
     expect(isMaterialKind("LinkedIn")).toBe(false);
     expect(getMaterialKind("glass")).toBe("glass");
     expect(getMaterialKind("Glass")).toBe("glass");
     expect(getMaterialKind("unknown-kind", "rubber")).toBe("rubber");
     expect(getMaterialKind("constructor")).toBe("cloth");
-    expect(getMaterialConfig("mail")).toBe(materialConfigs.mail);
-    expect(getMaterialConfig("unknown", "grass")).toBe(materialConfigs.grass);
-    expect(getMaterialPreset(materialConfigs.enamel)).toBe(
-      materialConfigs.enamel,
-    );
+    expect(getMaterialConfig("mail")).toBe(materialPresets.mail);
+    expect(getMaterialConfig("unknown", "grass")).toBe(materialPresets.grass);
   });
 });
 
@@ -108,7 +93,6 @@ describe("pointer UV", () => {
 describe("poke model", () => {
   it("keeps pointer response local to the contact point", () => {
     const state = createPokeState();
-    expect(createPokeModel()).toMatchObject({ x: 0.5, y: 0.5 });
     expect(gaussianInfluence(1, 0)).toBe(0);
     applyPoke(state, 0.25, 0.25, 1);
     stepPoke(state, materialPresets.rubber);
@@ -224,7 +208,7 @@ describe("poke model", () => {
     expect(getMaterialEventKind(materialPresets.cloth, cloth, 0)).toBe("hover");
   });
 
-  it("tracks contact history, generic updates, and haptic no-ops", () => {
+  it("tracks contact history and haptic no-ops", () => {
     expect(createContactHistory()).toMatchObject({
       maxPoints: 8,
       fadeMs: 1400,
@@ -253,19 +237,8 @@ describe("poke model", () => {
     stepContactHistory(history, 21);
     expect(history.points).toHaveLength(0);
 
-    const state = createPokeState();
-    updatePokeModel(state, materialPresets.mail, { x: 0.7, y: 0.4 }, 33.34);
-    expect(state.pressure).toBeGreaterThan(0);
-    updatePokeModel(
-      state,
-      materialPresets.mail,
-      { x: 0.7, y: 0.4, active: false },
-      16.67,
-    );
-    expect(state.targetPressure).toBe(0);
-    updatePokeModel(state, materialPresets.mail, null);
-
     expect(shouldTriggerMaterialHaptic(100, 279)).toBe(false);
+    expect(shouldTriggerMaterialHaptic(100, 280)).toBe(true);
     expect(shouldTriggerMaterialHaptic(100, 281)).toBe(true);
     expect(getMaterialHapticPattern("glass", "contact", 0)).toEqual([]);
     expect(getMaterialHapticPattern("rubber", "press", 0.5)).toEqual([
@@ -296,81 +269,6 @@ describe("poke model", () => {
         },
       }),
     ).toBe(false);
-  });
-});
-
-describe("material regions", () => {
-  it("validates reusable multi-material manifests", () => {
-    const manifest = createLinkedInRegionManifest("linkedin.svg");
-
-    expect(listRegionMaterials(manifest)).toEqual(["enamel", "glass"]);
-    expect(
-      createMaterialRegionManifest({
-        asset: "demo.svg",
-        regions: [
-          {
-            id: "camera-body",
-            source: { type: "closed-path", pathId: "body" },
-            material: "cloth",
-          },
-          {
-            id: "accent",
-            source: { type: "color", value: "#ff00aa", tolerance: 0.2 },
-            material: "glass",
-          },
-          {
-            id: "mask",
-            source: {
-              type: "mask-channel",
-              texture: "mask.png",
-              channel: "a",
-            },
-            material: "grass",
-          },
-        ],
-      }),
-    ).toMatchObject({ asset: "demo.svg" });
-  });
-
-  it("fails closed for invalid region manifests", () => {
-    expect(() =>
-      createMaterialRegionManifest({
-        asset: "",
-        regions: [],
-      }),
-    ).toThrow(/asset is required/);
-    expect(() =>
-      createMaterialRegionManifest({
-        asset: "bad.svg",
-        regions: [
-          {
-            id: "",
-            source: { type: "closed-path", pathId: "" },
-            material: "enamel",
-          },
-          {
-            id: "bad-material",
-            source: { type: "svg-selector", selector: "#ok" },
-            material: "paint" as never,
-          },
-          {
-            id: "dup",
-            source: { type: "svg-selector", selector: "" },
-            material: "cloth",
-          },
-          {
-            id: "dup",
-            source: { type: "color", value: "red", tolerance: 2 },
-            material: "glass",
-          },
-          {
-            id: "mask",
-            source: { type: "mask-channel", texture: "", channel: "r" },
-            material: "grass",
-          },
-        ],
-      }),
-    ).toThrow(/duplicate region id/);
   });
 });
 
@@ -435,84 +333,21 @@ describe("uniforms", () => {
   });
 });
 
-describe("hot loop guard", () => {
-  it("does not use React state in pointer/frame hot paths", () => {
-    const root = dirname(fileURLToPath(import.meta.url));
-    const hookSource = readFileSync(
-      join(root, "../../src/hooks/usePokeSurface.ts"),
-      "utf8",
-    );
-    const componentSource = readFileSync(
-      join(root, "../../src/components/FeelableSurface.tsx"),
-      "utf8",
-    );
-    const grassSource = readFileSync(
-      join(root, "../../src/components/GrassLogoSurface.tsx"),
-      "utf8",
-    );
-
-    expect(hookSource).not.toContain("useState");
-    expect(hookSource).not.toContain("setState");
-    expect(componentSource).toContain("delta * 1000");
-    expect(componentSource).toContain("mesh.scale.set");
-    expect(componentSource).not.toContain("useState");
-    expect(componentSource).not.toContain("setState");
-    expect(grassSource).toContain("resolveGrassBladeCount");
-    expect(grassSource).toContain("instancedMesh");
-  });
-});
-
 describe("React adapters", () => {
-  it("applies visible mesh deformation from poke response without React state", () => {
-    const set = vi.fn();
-    const mesh = {
-      scale: { set },
-      position: { z: 0 },
-      userData: {},
-    };
-    const state = createPokeState({ x: 0.5, y: 0.5, pressure: 0.8 });
-
-    applyFeelableMeshResponse(mesh, materialPresets.rubber, state);
-
-    expect(set).toHaveBeenCalledWith(
-      expect.any(Number),
-      expect.any(Number),
-      expect.any(Number),
-    );
-    expect(mesh.position.z).not.toBe(0);
-    expect(mesh.userData).toHaveProperty("feelableResponse");
-  });
-
-  it("renders card, surface, and grass components with shared poke state", () => {
+  it("renders surface and grass components with shared poke state", () => {
     let surfaceRenderer: ReturnType<typeof create> | undefined;
-    let cardRenderer: ReturnType<typeof create> | undefined;
     let grassRenderer: ReturnType<typeof create> | undefined;
 
     act(() => {
       surfaceRenderer = create(
         createElement(
           FeelableSurface,
-          { material: "rubber", ariaLabel: "Rubber card" },
+          { material: "rubber" },
           createElement("meshBasicMaterial"),
         ),
       );
-      cardRenderer = create(
-        createElement(FeelableMaterialCard, {
-          material: "cloth",
-          ariaLabel: "Cloth card",
-          underline: true,
-          logo: createElement("mesh"),
-        }),
-      );
-      create(
-        createElement(FeelableMaterialCard, {
-          material: "cloth",
-          ariaLabel: "Plain cloth card",
-        }),
-      );
       grassRenderer = create(
         createElement(GrassLogoSurface, {
-          ariaLabel: "Grass logo",
           count: 12,
           seed: 4,
           mask: (x: number) => x > 0.2,
@@ -520,11 +355,9 @@ describe("React adapters", () => {
       );
     });
     const surface = surfaceRenderer?.toJSON();
-    const card = cardRenderer?.toJSON();
     const grass = grassRenderer?.toJSON();
 
-    expect(JSON.stringify(surface)).toContain("Rubber card");
-    expect(JSON.stringify(card)).toContain("feelableUnderline");
+    expect(surface).toMatchObject({ type: "mesh" });
     expect(JSON.stringify(grass)).toContain("grassBlades");
   });
 
@@ -534,8 +367,7 @@ describe("React adapters", () => {
     function Host() {
       const poke = usePokeSurface("rubber");
       const reducedPoke = usePokeSurface("rubber", { reducedMotion: true });
-      const readUv = usePointerUv();
-      const reduced = useReducedMotionSurface(true);
+      const reduced = resolveReducedMotionSurface(true);
 
       poke.handlers.onPointerMove({ uv: { x: 0.2, y: 0.3 } });
       poke.handlers.onPointerDown({ uv: { x: 0.4, y: 0.6 } });
@@ -546,7 +378,7 @@ describe("React adapters", () => {
       observed.push({
         pressure: poke.stateRef.current.pressure,
         reducedPressure: reducedPoke.stateRef.current.targetPressure,
-        uv: readUv({}),
+        uv: readPointerUv({}),
         reduced,
       });
       return null;

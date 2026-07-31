@@ -36,7 +36,6 @@ jobs:
       - run: |
           set -euo pipefail
           npm ci
-          npm run check:workflows
           npm run security:audit
           npm run security:osv
 

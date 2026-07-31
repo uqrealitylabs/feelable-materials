@@ -15,7 +15,7 @@ The supported local interface is mise run format, format-check, lint, spell, wor
 
 ## Tool ownership
 
-Biome 2.5.4 owns JS/TS/JSX/TSX/JSON/JSONC/CSS formatting, linting, and imports. typos 1.48.0 owns spelling. zizmor 1.27.0 owns workflow security. No Rust source is present in this repository, so rustfmt, clippy, nextest, and cargo-deny are not installed.
+Biome 2.5.4 owns JS/TS/JSX/TSX/JSON/JSONC/CSS formatting, linting, and imports. typos 1.48.0 owns spelling. zizmor 1.26.1 owns workflow security. No Rust source is present in this repository, so rustfmt, clippy, nextest, and cargo-deny are not installed.
 
 ## Updating tools
 

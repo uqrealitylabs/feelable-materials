@@ -1,4 +1,5 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { basename } from "node:path";
 
 const htmlPath = "demo-dist/index.html";
 const sourcePaths = [
@@ -19,8 +20,29 @@ if (existsSync(htmlPath)) {
   }
   if (html.includes("esm.sh") || html.includes("unpkg.com"))
     issues.push("demo must not use a CDN import map");
-  if (expectedBase && !html.includes(expectedBase))
-    issues.push(`built assets must use ${expectedBase}`);
+  const assets = [...html.matchAll(/(?:src|href)="([^"]*assets\/[^"]+)"/g)].map(
+    ([, path]) => path,
+  );
+  if (assets.length === 0) issues.push("built demo has no linked assets");
+  if (expectedBase)
+    for (const path of assets)
+      if (!path?.startsWith(`${expectedBase}assets/`))
+        issues.push(`built asset ${path} must use ${expectedBase}`);
+  const assetDir = "demo-dist/assets";
+  const files = existsSync(assetDir) ? readdirSync(assetDir) : [];
+  for (const path of assets)
+    if (!existsSync(`${assetDir}/${basename(path ?? "")}`))
+      issues.push(`built asset is missing: ${path}`);
+  const lazyChunk = files.find(
+    (file) => file.startsWith("MaterialBench-") && file.endsWith(".js"),
+  );
+  const entries = assets
+    .filter((path) => path?.endsWith(".js"))
+    .map((path) => `${assetDir}/${basename(path ?? "")}`)
+    .filter((path) => existsSync(path))
+    .map((path) => readFileSync(path, "utf8"));
+  if (!lazyChunk || !entries.some((entry) => entry.includes(lazyChunk)))
+    issues.push("built entry must reference the material bench chunk");
 }
 
 const source = sourcePaths
@@ -29,6 +51,8 @@ const source = sourcePaths
   .join("\n");
 for (const text of [
   "FeelableSurface",
+  'frameloop="demand"',
+  "vite:preloadError",
   "../../../dist/index.js",
   "../../../dist/react.js",
 ]) {

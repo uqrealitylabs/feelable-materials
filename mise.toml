@@ -5,7 +5,7 @@ node = "24.18.0"
 npm = "11.12.1"
 biome = "2.5.4"
 typos = "1.48.0"
-zizmor = "1.27.0"
+zizmor = "1.26.1"
 
 [tasks.setup]
 run = "npm ci"

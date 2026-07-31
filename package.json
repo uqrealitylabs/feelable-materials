@@ -1,8 +1,9 @@
 {
   "name": "@uqrealitylabs/feelable-materials",
   "version": "0.2.1",
-  "description": "Tactile React Three Fiber materials that crease, compress, smudge, bend, and react to touch.",
+  "description": "Pointer-local React Three Fiber surface deformation, smudges, and grass instances.",
   "type": "module",
+  "sideEffects": false,
   "license": "GPL-3.0-only",
   "packageManager": "npm@11.12.1",
   "files": [
@@ -37,10 +38,8 @@
     "test": "npm run test:coverage",
     "test:unit": "vitest run --config tools/config/vitest.config.ts",
     "test:coverage": "vitest run --config tools/config/vitest.config.ts --coverage.enabled true",
-    "test:r3f": "npm run test:unit",
-    "test:component": "npm run test:unit",
     "test:ci": "npm run repo:check && npm run typecheck && npm run lint && npm run format:check && npm run test:coverage && npm run build && npm run test:consumer && npm run package:check && npm run demo:build && npm run test:demo",
-    "prebuild": "rm -rf dist",
+    "prebuild": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
     "build": "tsc -p tools/config/tsconfig.build.json",
     "demo:dev": "npm run demo:build && vite --config tools/config/demo-vite.config.ts",
     "demo:build": "npm run build && npm run demo:typecheck:built && vite build --config tools/config/demo-vite.config.ts",
@@ -48,7 +47,6 @@
     "demo:typecheck:built": "tsc --noEmit --project tools/config/tsconfig.demo.json",
     "test:demo": "node tools/scripts/demo/validate-demo.ts",
     "package:check": "npm pack --dry-run --cache /tmp/npm-cache",
-    "pack:check": "npm run package:check",
     "test:consumer": "node tools/scripts/consumer-smoke.ts",
     "security:audit": "npm audit --audit-level=moderate",
     "security:osv": "node tools/scripts/security/osv-audit.ts",
@@ -64,7 +62,7 @@
   "bugs": {
     "url": "https://github.com/uqrealitylabs/feelable-materials/issues"
   },
-  "homepage": "https://github.com/uqrealitylabs/feelable-materials#readme",
+  "homepage": "https://uqrealitylabs.com/feelable-materials/",
   "keywords": [
     "react-three-fiber",
     "threejs",
@@ -75,7 +73,7 @@
   "peerDependencies": {
     "@react-three/fiber": ">=9 <10",
     "react": ">=19 <20",
-    "three": ">=0.170 <1"
+    "three": ">=0.185 <0.186"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.4",
@@ -84,6 +82,7 @@
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "@types/react-test-renderer": "^19.1.0",
+    "@types/three": "^0.185.1",
     "@vitest/coverage-v8": "^4.1.10",
     "react": "^19.2.1",
     "react-dom": "^19.2.7",

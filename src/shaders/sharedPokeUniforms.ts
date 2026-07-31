@@ -20,14 +20,15 @@ export function createPokeUniforms(state?: PokeState): PokeUniforms {
 export function syncPokeUniforms(
   uniforms: PokeUniforms,
   state: PokeState | undefined,
+  velocity?: { x: number; y: number } | undefined,
 ) {
   if (!state) return uniforms;
 
   uniforms.uPoke.value[0] = state.x;
   uniforms.uPoke.value[1] = state.y;
   uniforms.uPoke.value[2] = state.pressure;
-  uniforms.uPokeVelocity.value[0] = state.x - state.previousX;
-  uniforms.uPokeVelocity.value[1] = state.y - state.previousY;
+  uniforms.uPokeVelocity.value[0] = velocity?.x ?? state.x - state.previousX;
+  uniforms.uPokeVelocity.value[1] = velocity?.y ?? state.y - state.previousY;
   uniforms.uSmudge.value = state.stains;
 
   return uniforms;
