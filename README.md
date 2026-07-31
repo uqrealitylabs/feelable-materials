@@ -4,9 +4,7 @@ Tactile React Three Fiber material surfaces for cloth, rubber, glass, grass, and
 
 ## What It Is
 
-`@uqrealitylabs/feelable-materials` is a small interaction model and React Three Fiber component layer for pointer-local surfaces. It was extracted from the UQ Reality Labs social material cards and keeps the reusable parts: cloth creases, rubber mush, glass smudges, grass blade fields, mail/card bending, and a shared poke model.
-
-The internal idea is "materials actually": material labels should behave differently, not just swap colours.
+`@uqrealitylabs/feelable-materials` is a small interaction model and React Three Fiber component layer for pointer-local deformation, glass smudges, and grass blade fields.
 
 ## When To Use It
 
@@ -17,38 +15,46 @@ Do not use it for full physics simulation, cloth solvers, production damage syst
 ## Install
 
 ```sh
-npm install @uqrealitylabs/feelable-materials three @react-three/fiber
+npm install github:uqrealitylabs/feelable-materials three @react-three/fiber
 ```
+
+The scoped package is not yet published to the npm registry. The GitHub source
+installs under the same `@uqrealitylabs/feelable-materials` package name.
 
 ## Basic Example
 
 ```tsx
-import { FeelableMaterialCard } from "@uqrealitylabs/feelable-materials/react";
+import { FeelableSurface } from "@uqrealitylabs/feelable-materials/react";
 
 export function SocialCard() {
   return (
-    <FeelableMaterialCard
-      material="grass"
-      ariaLabel="Community"
-      logo={<mesh />}
-      underline
-    />
+    <FeelableSurface material="grass">
+      <planeGeometry args={[2.55, 1.5, 24, 14]} />
+      <meshStandardMaterial color="#a7d88b" />
+    </FeelableSurface>
   );
 }
 ```
 
 > [!NOTE]
-> The package provides R3F-compatible components and pure model helpers. Apps still own their canvas, camera, lighting, labels, and links.
+> Render React components inside an R3F `Canvas`. Apps still own their canvas,
+> camera, lighting, accessible HTML controls, labels, and links. Geometry needs
+> enough vertices and usable, non-overlapping UVs for local deformation.
+
+Use a dedicated Three material instance for a `FeelableSurface`. Sharing between
+two feelable surfaces is rejected; sharing with an ordinary mesh is forbidden
+but cannot be detected by Three. Use `meshProps` for mesh transforms, shadow
+flags, names, and other R3F mesh settings.
 
 ## Materials
 
 ### Cloth
 
-Soft local crease, surface depression, and slow return.
+Broad local depression and slow return.
 
 ### Rubber
 
-Stronger inward mush, local bulge, and elastic rebound.
+Deeper local depression and quicker return.
 
 ### Glass
 
@@ -56,11 +62,21 @@ Smudge/contact accumulation with fade over time and roughness-style response met
 
 ### Grass
 
-Deterministic blade/card instances with local bend and spring-back data. Use `createGrassBladeInstances()` for logo masks or full-card fields.
+Deterministic blade instances with pointer-local tip displacement. Use `createGrassBladeInstances()` for logo masks or full-card fields.
 
 ### Mail
 
-Card-like bend response for email or document surfaces.
+Shallow local depression and return for card-like surfaces.
+
+`FeelableSurface` renders preset radius, depth, tint, return, and glass-smudge
+differences. `GrassLogoSurface` adds instanced blades. The extra values returned
+by `getMaterialResponse()` are model data for consumer-owned effects; the
+built-in shader does not claim to be a cloth, rubber, or card physics solver.
+
+The component supports `Three.WebGLRenderer` only; `WebGPURenderer` does not run
+`onBeforeCompile`. GPU displacement does not change CPU raycasts or Three's
+separate shadow-material passes. Overlapping UV islands receive the same local
+response.
 
 ## How Pointer-Local Poking Works
 
@@ -120,13 +136,10 @@ Run the demo locally with `npm run demo:dev`. A production build is written to
 `demo-dist/` by `npm run demo:build`, and `npm run demo:preview` serves that
 output locally.
 
-The demo is built with `/project/feelable-materials/` as its production base
-path and is intended for
-`https://uqrealitylabs.com/project/feelable-materials/`. The current repository
-Pages site is separately exposed at
-`https://uqrealitylabs.com/feelable-materials/`; the organisation's root-site
-or proxy configuration must map the requested `/project/feelable-materials/`
-path to this Pages deployment. No conflicting `CNAME` is committed here.
+The GitHub Pages demo is deployed at
+`https://uqrealitylabs.com/feelable-materials/` with
+`/feelable-materials/` as its production asset base. No proxy mapping is
+required.
 
 No Chalk font asset is present in the source repositories. The demo therefore
 uses the existing OFL-licensed Pixelify Sans asset in `examples/demo/src/assets`

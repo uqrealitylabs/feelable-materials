@@ -24,8 +24,6 @@ export type MaterialEventKind =
 export type FeelableMaterialConfig = {
   kind: MaterialKind;
   behavior: FeelableMaterialBehavior;
-  pointerResponse: true;
-  pressBoost: number;
   decay: number;
   radius: number;
   deformation: number;
@@ -42,8 +40,6 @@ export const materialPresets: Record<MaterialKind, FeelableMaterialConfig> = {
   cloth: {
     kind: "cloth",
     behavior: "crease",
-    pointerResponse: true,
-    pressBoost: 1.4,
     decay: 0.86,
     radius: 0.28,
     deformation: 0.72,
@@ -58,8 +54,6 @@ export const materialPresets: Record<MaterialKind, FeelableMaterialConfig> = {
   rubber: {
     kind: "rubber",
     behavior: "squish",
-    pointerResponse: true,
-    pressBoost: 1.75,
     decay: 0.78,
     radius: 0.34,
     deformation: 0.9,
@@ -74,8 +68,6 @@ export const materialPresets: Record<MaterialKind, FeelableMaterialConfig> = {
   glass: {
     kind: "glass",
     behavior: "smudge",
-    pointerResponse: true,
-    pressBoost: 1.15,
     decay: 0.94,
     radius: 0.22,
     deformation: 0,
@@ -90,8 +82,6 @@ export const materialPresets: Record<MaterialKind, FeelableMaterialConfig> = {
   grass: {
     kind: "grass",
     behavior: "bend",
-    pointerResponse: true,
-    pressBoost: 1.55,
     decay: 0.82,
     radius: 0.3,
     deformation: 0.7,
@@ -106,8 +96,6 @@ export const materialPresets: Record<MaterialKind, FeelableMaterialConfig> = {
   mail: {
     kind: "mail",
     behavior: "bend",
-    pointerResponse: true,
-    pressBoost: 1.35,
     decay: 0.84,
     radius: 0.26,
     deformation: 0.38,
@@ -122,8 +110,6 @@ export const materialPresets: Record<MaterialKind, FeelableMaterialConfig> = {
   enamel: {
     kind: "enamel",
     behavior: "gloss",
-    pointerResponse: true,
-    pressBoost: 1.08,
     decay: 0.9,
     radius: 0.18,
     deformation: 0.03,
@@ -137,27 +123,26 @@ export const materialPresets: Record<MaterialKind, FeelableMaterialConfig> = {
   },
 };
 
-export const materialConfigs = materialPresets;
-
-export function isMaterialKind(value: string): value is MaterialKind {
-  return Object.hasOwn(materialPresets, value.toLowerCase());
+export function isMaterialKind(value: unknown): value is MaterialKind {
+  return typeof value === "string" && Object.hasOwn(materialPresets, value);
 }
 
 export function getMaterialKind(
-  value = "",
+  value: unknown = "",
   fallback: MaterialKind = "cloth",
 ): MaterialKind {
-  const name = value.toLowerCase();
+  const name = typeof value === "string" ? value.trim().toLowerCase() : "";
 
-  return isMaterialKind(name) ? name : fallback;
+  return isMaterialKind(name)
+    ? name
+    : isMaterialKind(fallback)
+      ? fallback
+      : "cloth";
 }
 
-export function getMaterialConfig(value = "", fallback?: MaterialKind) {
-  return materialPresets[getMaterialKind(value, fallback)];
-}
-
-export function getMaterialPreset(
-  material: MaterialKind | FeelableMaterialConfig,
+export function getMaterialConfig(
+  value: unknown = "",
+  fallback?: MaterialKind,
 ) {
-  return typeof material === "string" ? materialPresets[material] : material;
+  return materialPresets[getMaterialKind(value, fallback)];
 }

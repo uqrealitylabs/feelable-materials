@@ -2,6 +2,7 @@ import type {
   MaterialEventKind,
   MaterialKind,
 } from "../materials/materialPresets.js";
+import { clamp } from "./numbers.js";
 
 export const materialHaptics: Record<
   MaterialKind,
@@ -34,7 +35,7 @@ export function shouldTriggerMaterialHaptic(
   now: number,
   intervalMs = 180,
 ) {
-  return now - lastAt > intervalMs;
+  return now - lastAt >= Math.max(0, intervalMs);
 }
 
 export function getMaterialHapticPattern(
@@ -43,7 +44,7 @@ export function getMaterialHapticPattern(
   intensity = 1,
 ) {
   const pattern = materialHaptics[material][eventKind] ?? [];
-  const scale = Math.max(0, Math.min(1, intensity));
+  const scale = clamp(intensity, 0, 1);
   if (scale === 0) return [];
 
   return pattern.map((duration) => Math.max(1, Math.round(duration * scale)));
@@ -56,13 +57,12 @@ export function triggerMaterialHaptic(
   options: HapticOptions = {},
 ) {
   if (options.reducedMotion) return false;
-  const vibrate = options.navigator?.vibrate;
-  if (typeof vibrate !== "function") return false;
+  if (typeof options.navigator?.vibrate !== "function") return false;
   const pattern = getMaterialHapticPattern(material, eventKind, intensity);
   if (pattern.length === 0) return false;
 
   try {
-    return vibrate(pattern);
+    return options.navigator.vibrate(pattern);
   } catch {
     return false;
   }

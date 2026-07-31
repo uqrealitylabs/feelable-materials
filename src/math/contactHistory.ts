@@ -1,4 +1,7 @@
 import type { MaterialEventKind } from "../materials/materialPresets.js";
+import { clamp } from "./numbers.js";
+
+const MAX_CONTACT_POINTS = 10_000;
 
 export type ContactPoint = {
   uv: [number, number];
@@ -17,10 +20,22 @@ export type ContactHistory = {
 export function createContactHistory(
   options: { maxPoints?: number; fadeMs?: number } = {},
 ): ContactHistory {
+  const maxPoints = options.maxPoints ?? 8;
+  const fadeMs = options.fadeMs ?? 1400;
+  if (
+    !Number.isSafeInteger(maxPoints) ||
+    maxPoints < 0 ||
+    maxPoints > MAX_CONTACT_POINTS
+  )
+    throw new RangeError(
+      `maxPoints must be an integer between 0 and ${MAX_CONTACT_POINTS}`,
+    );
+  if (!Number.isFinite(fadeMs) || fadeMs < 0)
+    throw new RangeError("fadeMs must be a finite non-negative number");
   return {
     points: [],
-    maxPoints: options.maxPoints ?? 8,
-    fadeMs: options.fadeMs ?? 1400,
+    maxPoints,
+    fadeMs,
   };
 }
 
@@ -31,10 +46,12 @@ export function addContact(
   eventKind: MaterialEventKind,
 ) {
   history.points.unshift({
-    uv: [point.x, point.y],
+    uv: [clamp(point.x, 0, 1), clamp(point.y, 0, 1)],
     age: 0,
-    pressure: Math.max(0, Math.min(1, strength)),
-    velocity: point.velocity ?? [0, 0],
+    pressure: clamp(strength, 0, 1),
+    velocity: (point.velocity ?? [0, 0]).map((value) =>
+      Number.isFinite(value) ? value : 0,
+    ) as [number, number],
     phase: toContactPhase(eventKind),
   });
   history.points.length = Math.min(history.points.length, history.maxPoints);
@@ -43,8 +60,9 @@ export function addContact(
 }
 
 export function stepContactHistory(history: ContactHistory, deltaMs: number) {
+  const elapsedMs = Number.isFinite(deltaMs) ? Math.max(0, deltaMs) : 0;
   history.points.forEach((point) => {
-    point.age += Math.max(0, deltaMs);
+    point.age += elapsedMs;
   });
   history.points = history.points.filter((point) => point.age < history.fadeMs);
 

@@ -1,15 +1,4 @@
 export type {
-  MaterialRegion,
-  MaterialRegionManifest,
-  MaterialRegionSource,
-} from "./materialRegions.js";
-export {
-  createLinkedInRegionManifest,
-  createMaterialRegionManifest,
-  listRegionMaterials,
-  validateMaterialRegionManifest,
-} from "./materialRegions.js";
-export type {
   FeelableMaterialBehavior,
   FeelableMaterialConfig,
   MaterialEventKind,
@@ -18,9 +7,7 @@ export type {
 export {
   getMaterialConfig,
   getMaterialKind,
-  getMaterialPreset,
   isMaterialKind,
-  materialConfigs,
   materialPresets,
 } from "./materials/materialPresets.js";
 export type { ContactHistory, ContactPoint } from "./math/contactHistory.js";
@@ -46,7 +33,6 @@ export type {
 export {
   applyPoke,
   createGrassBladeInstances,
-  createPokeModel,
   createPokeState,
   getMaterialEventKind,
   getMaterialResponse,
@@ -54,7 +40,6 @@ export {
   getPokeVelocity,
   releasePoke,
   stepPoke,
-  updatePokeModel,
 } from "./math/pokeModel.js";
 export {
   resolveGrassBladeCount,

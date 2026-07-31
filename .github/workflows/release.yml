@@ -60,13 +60,14 @@ jobs:
           set -euo pipefail
           mkdir -p artifacts
           npm pack --pack-destination artifacts
-          shasum -a 256 artifacts/*.tgz > artifacts/SHA256SUMS
-          find artifacts -maxdepth 1 -type f | sort > artifacts/package-manifest.txt
+          cd artifacts
+          shasum -a 256 ./*.tgz > SHA256SUMS
+          find . -maxdepth 1 -type f | sort > package-manifest.txt
       - run: |
           set -euo pipefail
-          export RELEASE_TAG="${{ needs.release-please.outputs.tag_name }}"
           npm run release:codename -- "${RELEASE_TAG}"
           node tools/scripts/release/update-github-release.ts "${RELEASE_TAG}"
           gh release upload "${RELEASE_TAG}" artifacts/* --clobber
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.release-please.outputs.tag_name }}
