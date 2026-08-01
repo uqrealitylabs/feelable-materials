@@ -1,6 +1,6 @@
 # feelable-materials
 
-Tactile React Three Fiber material surfaces for cloth, rubber, glass, grass, and touchable logos.
+Tactile React Three Fiber surfaces for cloth, rubber, glass, grass, thin sheets, enamel, and touchable logos.
 
 ## What It Is
 
@@ -15,11 +15,8 @@ Do not use it for full physics simulation, cloth solvers, production damage syst
 ## Install
 
 ```sh
-npm install github:uqrealitylabs/feelable-materials three @react-three/fiber
+npm install @uqrealitylabs/feelable-materials three @react-three/fiber
 ```
-
-The scoped package is not yet published to the npm registry. The GitHub source
-installs under the same `@uqrealitylabs/feelable-materials` package name.
 
 ## Basic Example
 
@@ -66,17 +63,50 @@ Deterministic blade instances with pointer-local tip displacement. Use `createGr
 
 ### Mail
 
-Shallow local depression and return for card-like surfaces.
+Legacy preset name for shallow-flexing cards, foil, or other thin sheets.
 
-`FeelableSurface` renders preset radius, depth, tint, return, and glass-smudge
-differences. `GrassLogoSurface` adds instanced blades. The extra values returned
+### Enamel
+
+Small hard-surface response for coated ceramic or metal.
+
+The demo catalogue maps several appearances onto these interaction archetypes:
+orange velvet and satin use `cloth`; silicone uses `rubber`; frosted glass uses
+`glass`; turf uses `grass`; brushed and holographic foil use `mail`; glazed
+ceramic uses `enamel`. This keeps appearance choices out of the physics API.
+
+`FeelableSurface` renders preset radius, depth, return, corrected lighting
+normals, and press-only glass roughness marks. `GrassLogoSurface` adds instanced blades. The extra values returned
 by `getMaterialResponse()` are model data for consumer-owned effects; the
 built-in shader does not claim to be a cloth, rubber, or card physics solver.
 
 The component supports `Three.WebGLRenderer` only; `WebGPURenderer` does not run
 `onBeforeCompile`. GPU displacement does not change CPU raycasts or Three's
 separate shadow-material passes. Overlapping UV islands receive the same local
-response.
+response. Tangent-space normal and bump maps are supported; object-space normal
+maps are rejected because they overwrite the corrected contact normal.
+Generic instances share one UV response; `GrassLogoSurface` alone maps instance
+positions into its blade field.
+
+## Multiple Materials On One Object
+
+Use Three's native geometry groups and material array. `FeelableSurface`
+already patches each attached material; no wrapper API is needed.
+
+```tsx
+geometry.clearGroups();
+geometry.addGroup(0, firstRegionIndexCount, 0);
+geometry.addGroup(firstRegionIndexCount, secondRegionIndexCount, 1);
+
+<FeelableSurface material="mail">
+  <primitive object={geometry} attach="geometry" />
+  <primitive object={metal} attach="material-0" />
+  <primitive object={coating} attach="material-1" />
+</FeelableSurface>;
+```
+
+Every group is a draw call, and indexed groups must cover each index exactly
+once without overlaps or gaps. Prefer vertex colours or a texture atlas when
+regions share one BRDF; reserve groups for genuinely different materials.
 
 ## How Pointer-Local Poking Works
 
@@ -120,6 +150,8 @@ The testable core is pure TypeScript:
 
 ## Development Commands
 
+Development requires Node.js 22.18 or newer.
+
 ```sh
 npm install
 npm run typecheck
@@ -134,12 +166,19 @@ npm run demo:build
 
 Run the demo locally with `npm run demo:dev`. A production build is written to
 `demo-dist/` by `npm run demo:build`, and `npm run demo:preview` serves that
-output locally.
+output locally. Velvet and satin add a demo-only, fixed-step PBD cloth grid;
+the solver is intentionally not part of the package API.
 
 The GitHub Pages demo is deployed at
 `https://uqrealitylabs.com/feelable-materials/` with
 `/feelable-materials/` as its production asset base. No proxy mapping is
 required.
+
+The first npm release must be published manually with a short-lived granular
+token and two-factor authentication. Then configure npm trusted publishing for
+this repository, `checks.yml`, and the `npm` environment, and revoke the
+bootstrap token. Later releases use GitHub OIDC and provenance without a stored
+npm token.
 
 No Chalk font asset is present in the source repositories. The demo therefore
 uses the existing OFL-licensed Pixelify Sans asset in `examples/demo/src/assets`

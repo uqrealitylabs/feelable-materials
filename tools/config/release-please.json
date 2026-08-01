@@ -5,7 +5,7 @@
   "packages": {
     ".": {
       "package-name": "@uqrealitylabs/feelable-materials",
-      "changelog-path": "CHANGELOG.md"
+      "changelog-path": "docs/CHANGELOG.md"
     }
   }
 }

@@ -136,9 +136,9 @@ export function stepPoke(
   }
 
   state.pressure += (target - state.pressure) * (1 - decay);
-  const stainDecay = config.kind === "glass" ? 0.985 : 0.94;
+  const stainDecay = 0.94;
   const stainFade = stainDecay ** frames;
-  if (config.kind === "glass" && state.active && state.targetPressure > 0) {
+  if (config.kind === "glass" && state.active && state.targetPressure > 0.55) {
     const contact =
       state.targetPressure *
       0.18 *
@@ -167,15 +167,11 @@ export function getPokeInfluence(
   y: number,
   radius = 0.26,
 ) {
-  if (
-    !Number.isFinite(x) ||
-    !Number.isFinite(y) ||
-    !Number.isFinite(radius) ||
-    radius <= 0
-  )
-    return 0;
-  const distance = Math.hypot(x - state.x, y - state.y);
-  return Math.max(0, 1 - distance / radius) * state.pressure;
+  return gaussianInfluence(
+    Math.hypot(x - state.x, y - state.y),
+    radius,
+    state.pressure,
+  );
 }
 
 export function getMaterialResponse(

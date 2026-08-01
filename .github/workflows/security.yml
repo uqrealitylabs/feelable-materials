@@ -1,10 +1,7 @@
 name: Security
 
 on:
-  pull_request:
-  push:
-    branches:
-      - main
+  workflow_call:
   schedule:
     - cron: "29 3 * * 1"
   workflow_dispatch:
@@ -13,7 +10,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: security-${{ github.workflow }}-${{ github.ref }}
+  group: security-${{ github.repository }}-${{ github.ref }}
   cancel-in-progress: true
 
 defaults:
@@ -22,33 +19,43 @@ defaults:
 
 jobs:
   audit:
+    name: Audit
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 1
           persist-credentials: false
+      - uses: zizmorcore/zizmor-action@6fc4b006235f201fdab3722e17240ab420d580e5 # v0.6.1
+        with:
+          advanced-security: false
+          annotations: true
+          online-audits: false
+          persona: auditor
+          version: 1.28.0
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
         with:
-          node-version: 24
-          cache: npm
+          node-version: 22.18.0
+          package-manager-cache: false
       - run: |
           set -euo pipefail
-          npm ci
+          npm ci --ignore-scripts
           npm run check:workflows
-          npm run security:audit
+          go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
+          npm audit --package-lock-only --audit-level=moderate
           npm run security:osv
 
   dependency-review:
+    name: Dependency review
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
       contents: read
-      pull-requests: read
+      pull-requests: read # Required by dependency review.
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 1
           persist-credentials: false

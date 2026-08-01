@@ -1,16 +1,13 @@
 name: Release
 
 on:
-  push:
-    branches:
-      - main
-  workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: read
 
 concurrency:
-  group: release-${{ github.workflow }}-${{ github.ref }}
+  group: release-${{ github.repository }}
   cancel-in-progress: false
 
 defaults:
@@ -18,56 +15,116 @@ defaults:
     shell: bash
 
 jobs:
-  release-please:
+  github:
+    name: GitHub release
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 40
     permissions:
-      contents: write
-      pull-requests: write
+      actions: write # Required to validate generated release PRs.
+      contents: write # Required to create GitHub releases.
+      pull-requests: write # Required to maintain the release PR.
+    environment: release
     outputs:
-      release_created: ${{ steps.release.outputs.release_created }}
-      tag_name: ${{ steps.release.outputs.tag_name }}
+      release_ready: ${{ steps.resolve.outputs.release_ready }}
+      tag_name: ${{ steps.resolve.outputs.tag_name }}
+      target_sha: ${{ steps.resolve.outputs.target_sha }}
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
       - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
         id: release
         with:
           config-file: tools/config/release-please.json
           manifest-file: tools/config/release-manifest.json
-          token: ${{ secrets.RELEASE_PLEASE_TOKEN || github.token }}
+      - name: Validate release PR
+        if: steps.release.outputs.prs_created == 'true'
+        run: |
+          branch=$(node -e 'process.stdout.write(JSON.parse(process.env.RELEASE_PR).headBranchName)')
+          gh workflow run checks.yml --ref "${branch}"
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_PR: ${{ steps.release.outputs.pr }}
+      - id: resolve
+        run: |
+          set -euo pipefail
+          if [[ ${NEW_RELEASE} != true ]]; then
+            exit 0
+          fi
+          tag=${NEW_TAG}
+          if [[ ! ${tag} =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Release tag must be stable SemVer (vMAJOR.MINOR.PATCH)."
+            exit 1
+          fi
+          expected=$(git rev-parse HEAD)
+          git fetch --force --no-tags origin "refs/tags/${tag}:refs/tags/${tag}"
+          actual=$(git rev-parse "refs/tags/${tag}^{commit}")
+          if [[ ${actual} != "${expected}" ]]; then
+            echo "::error::${tag} targets ${actual}, not validated commit ${expected}."
+            exit 1
+          fi
+          state=$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${tag}" --jq '[.draft, .prerelease] | @tsv')
+          if [[ ${state} != $'false\tfalse' ]]; then
+            echo "::error::${tag} must be a published, stable GitHub release."
+            exit 1
+          fi
+          {
+            echo "release_ready=true"
+            echo "tag_name=${tag}"
+            echo "target_sha=${expected}"
+          } >> "${GITHUB_OUTPUT}"
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NEW_RELEASE: ${{ steps.release.outputs.release_created }}
+          NEW_TAG: ${{ steps.release.outputs.tag_name }}
 
-  package-artifacts:
-    needs: release-please
-    if: needs.release-please.outputs.release_created == 'true'
+  npm:
+    name: npm publish
+    needs: github
+    if: needs.github.outputs.release_ready == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     permissions:
-      contents: write
+      contents: read
+      id-token: write # Required for npm trusted publishing.
+    environment:
+      name: npm
+      url: https://www.npmjs.com/package/@uqrealitylabs/feelable-materials
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 1
           persist-credentials: false
-          ref: ${{ needs.release-please.outputs.tag_name }}
+          ref: ${{ needs.github.outputs.target_sha }}
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
         with:
           node-version: 24
-          cache: npm
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
       - run: |
           set -euo pipefail
-          npm ci
-          npm run test:ci
-      - run: |
-          set -euo pipefail
-          mkdir -p artifacts
-          npm pack --pack-destination artifacts
-          cd artifacts
-          shasum -a 256 ./*.tgz > SHA256SUMS
-          find . -maxdepth 1 -type f | sort > package-manifest.txt
-      - run: |
-          set -euo pipefail
-          npm run release:codename -- "${RELEASE_TAG}"
-          node tools/scripts/release/update-github-release.ts "${RELEASE_TAG}"
-          gh release upload "${RELEASE_TAG}" artifacts/* --clobber
+          npm_version=$(npm --version)
+          node -e 'const [major, minor, patch] = process.argv[1].split(".").map(Number); if (major < 11 || (major === 11 && (minor < 5 || (minor === 5 && patch < 1)))) throw new Error("npm 11.5.1 or newer is required for trusted publishing")' "${npm_version}"
+          test "${TARGET_SHA}" = "$(git rev-parse HEAD)"
+          git fetch --force --no-tags origin "refs/tags/${RELEASE_TAG}:refs/tags/${RELEASE_TAG}"
+          test "$(git rev-parse "refs/tags/${RELEASE_TAG}^{commit}")" = "${TARGET_SHA}"
+          test "${RELEASE_TAG}" = "v$(node -p "require('./package.json').version")"
+          npm ci --ignore-scripts
+          npm run build
         env:
-          GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ needs.release-please.outputs.tag_name }}
+          RELEASE_TAG: ${{ needs.github.outputs.tag_name }}
+          TARGET_SHA: ${{ needs.github.outputs.target_sha }}
+      - run: |
+          set -euo pipefail
+          package=$(node -p "require('./package.json').name")
+          version=$(node -p "require('./package.json').version")
+          if registry_result=$(npm view "${package}@${version}" gitHead 2>&1); then
+            test "${registry_result}" = "$(git rev-parse HEAD)"
+            echo "${package}@${version} is already published."
+          elif [[ ${registry_result} == *E404* ]]; then
+            npm publish --ignore-scripts --access public --provenance
+          else
+            echo "${registry_result}" >&2
+            exit 1
+          fi
