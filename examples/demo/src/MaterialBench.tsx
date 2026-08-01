@@ -404,7 +404,7 @@ function GrassSurface({
   reducedMotion: boolean;
 }) {
   return (
-    <group>
+    <group rotation={[-0.69, 0, 0]}>
       <mesh>
         <boxGeometry args={[WIDTH, HEIGHT, 0.1]} />
         <meshStandardMaterial color="#254d2d" roughness={1} />
