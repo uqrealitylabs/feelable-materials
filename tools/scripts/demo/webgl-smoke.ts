@@ -36,6 +36,7 @@ const framebufferExpression = `new Promise((resolve) => requestAnimationFrame(()
     hash = Math.imul(hash ^ color, 16777619);
   }
   resolve({
+    url: location.href,
     material: canvas.dataset.feelableMaterial ?? "",
     pressure: Number(canvas.dataset.feelablePressure ?? 0),
     calls: Number(canvas.dataset.feelableDraws ?? 0),
@@ -226,6 +227,7 @@ try {
   await call("Runtime.enable");
   await call("Page.enable");
   type FrameSample = {
+    url: string;
     material: string;
     pressure: number;
     calls: number;
@@ -233,6 +235,10 @@ try {
     colors: number;
     hash: number;
   };
+  const fromPage = (
+    sample: FrameSample | null,
+    expectedUrl: string,
+  ): sample is FrameSample => sample?.url === expectedUrl;
   const sampleFramebuffer = async () => {
     const evaluation = (await call("Runtime.evaluate", {
       expression: framebufferExpression,
@@ -296,8 +302,9 @@ try {
   for (const testCase of cases) {
     const { id: caseId, material: materialId, shader } = testCase;
     console.log(`Testing WebGL ${caseId}…`);
+    const caseUrl = `${url}?smoke&material=${encodeURIComponent(materialId)}${shader ? `&shader=${shader}` : ""}#bench`;
     await call("Page.navigate", {
-      url: `${url}?smoke&material=${encodeURIComponent(materialId)}${shader ? `&shader=${shader}` : ""}#bench`,
+      url: caseUrl,
     });
     let baseline: FrameSample | null = null;
     let lastSample: FrameSample | null = null;
@@ -305,7 +312,8 @@ try {
       const sample = await sampleFramebuffer();
       lastSample = sample;
       if (
-        sample?.material === materialId &&
+        fromPage(sample, caseUrl) &&
+        sample.material === materialId &&
         sample.error === 0 &&
         sample.colors >= 4 &&
         sample.calls > 0 &&
@@ -320,17 +328,24 @@ try {
       throw new Error(
         `${caseId} framebuffer baseline failed (${JSON.stringify(lastSample)})\n${output}`,
       );
-    if (caseId === primaryMaterial)
-      await call("Runtime.evaluate", {
+    if (caseId === primaryMaterial) {
+      await call("Emulation.setCPUThrottlingRate", { rate: 6 });
+      const buttonPress = (await call("Runtime.evaluate", {
         expression:
-          'document.querySelector(".control-actions button")?.click()',
-      });
-    else await dispatchPointer("pointerdown");
+          '(() => { const button = document.querySelector(".control-actions button:not(:disabled)"); button?.click(); return Boolean(button); })()',
+        returnByValue: true,
+      })) as { result?: { value?: boolean } };
+      if (buttonPress.result?.value !== true)
+        throw new Error("Press control is missing or disabled");
+    } else await dispatchPointer("pointerdown");
     let touched: FrameSample | null = null;
+    let lastTouched: FrameSample | null = null;
     for (let attempt = 0; attempt < 120; attempt += 1) {
       const sample = await sampleFramebuffer();
+      lastTouched = sample;
       if (
-        sample?.material === materialId &&
+        fromPage(sample, caseUrl) &&
+        sample.material === materialId &&
         sample.pressure >= 0.5 &&
         sample.hash !== baseline.hash
       ) {
@@ -346,7 +361,7 @@ try {
       touched.calls > 3
     )
       throw new Error(
-        `${caseId} framebuffer or interaction failed (${JSON.stringify(touched)})\n${output}`,
+        `${caseId} framebuffer or interaction failed (${JSON.stringify(lastTouched)})\n${output}`,
       );
     if (process.env.WEBGL_SMOKE_SCREENSHOT && caseId === primaryMaterial) {
       const screenshot = (await call("Page.captureScreenshot", {
@@ -358,32 +373,42 @@ try {
         Buffer.from(screenshot.data, "base64"),
       );
     }
-    await dispatchPointer(
-      caseId === "shader-bump" ? "pointercancel" : "pointerup",
-    );
+    if (caseId !== primaryMaterial)
+      await dispatchPointer(
+        caseId === "shader-bump" ? "pointercancel" : "pointerup",
+      );
     let released = false;
     for (let attempt = 0; attempt < 120; attempt += 1) {
       const sample = await sampleFramebuffer();
-      if (sample?.material === materialId && sample.pressure < 0.05) {
+      if (
+        fromPage(sample, caseUrl) &&
+        sample.material === materialId &&
+        sample.pressure < 0.05
+      ) {
         released = true;
         break;
       }
       await new Promise((resolve) => setTimeout(resolve, 50));
     }
     if (!released) throw new Error(`${caseId} did not return after release`);
+    if (caseId === primaryMaterial)
+      await call("Emulation.setCPUThrottlingRate", { rate: 1 });
     const status = `pass:${caseId}:${touched.calls}:${touched.colors}:${touched.pressure.toFixed(2)}`;
     results.push(status);
   }
-  await call("Page.navigate", {
-    url: `${url}?material=${primaryMaterial}#bench`,
-  });
+  const productionUrl = `${url}?material=${primaryMaterial}#bench`;
+  await call("Page.navigate", { url: productionUrl });
   let productionBaseline: FrameSample | null = null;
   let productionSample: FrameSample | null = null;
   for (let attempt = 0; attempt < 120; attempt += 1) {
     await wakeDemandFrame();
     const sample = await sampleFramebuffer();
     productionSample = sample;
-    if (sample && sample.error === 0 && sample.colors >= 4) {
+    if (
+      fromPage(sample, productionUrl) &&
+      sample.error === 0 &&
+      sample.colors >= 4
+    ) {
       productionBaseline = sample;
       break;
     }
@@ -416,7 +441,11 @@ try {
   for (let attempt = 0; attempt < 120; attempt += 1) {
     await wakeDemandFrame();
     const sample = await sampleFramebuffer();
-    if (sample && sample.error === 0 && sample.colors >= 4) {
+    if (
+      fromPage(sample, productionUrl) &&
+      sample.error === 0 &&
+      sample.colors >= 4
+    ) {
       contextRestored = true;
       break;
     }
@@ -439,10 +468,15 @@ try {
   );
 } finally {
   await Promise.all([stop(browser), stop(preview)]);
-  rmSync(profile, {
-    recursive: true,
-    force: true,
-    maxRetries: 5,
-    retryDelay: 100,
-  });
+  try {
+    rmSync(profile, {
+      recursive: true,
+      force: true,
+      maxRetries: 5,
+      retryDelay: 100,
+    });
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code ?? "unknown error";
+    console.warn(`Temporary Chrome profile cleanup failed (${code}).`);
+  }
 }

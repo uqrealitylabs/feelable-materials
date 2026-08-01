@@ -101,13 +101,16 @@ function App() {
     canvas.dispatchEvent(
       new PointerEvent("pointerdown", { ...pointer, button: 0, buttons: 1 }),
     );
-    window.setTimeout(
-      () =>
+    const pressedAt = performance.now();
+    const release = (now: number) => {
+      if (now - pressedAt < 180) return requestAnimationFrame(release);
+      requestAnimationFrame(() =>
         canvas.dispatchEvent(
           new PointerEvent("pointerup", { ...pointer, button: 0 }),
         ),
-      180,
-    );
+      );
+    };
+    requestAnimationFrame(release);
   }
 
   return (
