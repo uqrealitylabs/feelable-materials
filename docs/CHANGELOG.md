@@ -1,5 +1,29 @@
 # Changelog
 
+## [1.0.0](https://github.com/uqrealitylabs/feelable-materials/compare/v0.3.0...v1.0.0) (2026-08-01)
+
+
+### ⚠ BREAKING CHANGES
+
+* remove unsupported public wrappers and manifest APIs; narrow Three.js compatibility to 0.185.x.
+
+### Features
+
+* harden rendering and Pages delivery ([#12](https://github.com/uqrealitylabs/feelable-materials/issues/12)) ([e0d408c](https://github.com/uqrealitylabs/feelable-materials/commit/e0d408c717d80d033bdacd4babcd9d4ea8831e9b)), closes [#17](https://github.com/uqrealitylabs/feelable-materials/issues/17) [#18](https://github.com/uqrealitylabs/feelable-materials/issues/18) [#19](https://github.com/uqrealitylabs/feelable-materials/issues/19)
+* improve material and cloth rendering ([8710d29](https://github.com/uqrealitylabs/feelable-materials/commit/8710d29c390a1464809ef9560a990568689ff7a9))
+
+
+### Bug Fixes
+
+* delay unproven dependency updates ([8d67225](https://github.com/uqrealitylabs/feelable-materials/commit/8d67225771ce625846c913af6c67cd7a44274205))
+* keep npm publishing on one OIDC identity ([04046ab](https://github.com/uqrealitylabs/feelable-materials/commit/04046ab8b8543420cbb7f4b88bd2a562ea11b8b8))
+* minimize privileged release execution ([b2ae8d7](https://github.com/uqrealitylabs/feelable-materials/commit/b2ae8d731d99e1c72e6eba53ad74c3cc34051107))
+* pass the read-only token to zizmor ([b58e369](https://github.com/uqrealitylabs/feelable-materials/commit/b58e36943e262922216e1a46f9b645544c233045))
+* preserve passing smoke results ([fb3eeca](https://github.com/uqrealitylabs/feelable-materials/commit/fb3eeca9d6001de99279aca04841fd07677420d3))
+* stabilize browser release checks ([5eca6d3](https://github.com/uqrealitylabs/feelable-materials/commit/5eca6d3575df13b35effb346b1055fa1a6c85b47))
+* stabilize browser release checks ([8ac8b4c](https://github.com/uqrealitylabs/feelable-materials/commit/8ac8b4c3f795c2b7a597c7c06c14fa03b89a7703))
+* validate releases without stored tokens ([a4bb8dd](https://github.com/uqrealitylabs/feelable-materials/commit/a4bb8dd42ece3372013f46ac3bf424f9a150ccb0))
+
 ## [0.3.0](https://github.com/uqrealitylabs/feelable-materials/compare/v0.2.1...v0.3.0) (2026-07-18)
 
 
