@@ -1,14 +1,16 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { type DemoMaterial, materialItems, type Quality } from "./demo-data";
+import { type DemoMaterial, materialItems } from "./demo-data";
+import {
+  parseResolution,
+  type RenderCeilings,
+  type RenderProfile,
+  type RenderQuality,
+  resolutionPresets,
+} from "./render-quality";
 import "./styles.css";
 
 const preloadReload = "feelable-preload-reload";
-const query = new URLSearchParams(window.location.search);
-const requestedMaterial = query.get("material");
-const initialMaterial =
-  materialItems.find(({ id }) => id === requestedMaterial)?.id ??
-  materialItems[0].id;
 const MaterialBench = lazy(() =>
   import("./MaterialBench").then((module) => {
     try {
@@ -19,25 +21,32 @@ const MaterialBench = lazy(() =>
     return module;
   }),
 );
-window.addEventListener("vite:preloadError", (event) => {
-  try {
-    if (sessionStorage.getItem(preloadReload)) return;
-    sessionStorage.setItem(preloadReload, "1");
-  } catch {
-    return;
-  }
-  event.preventDefault();
-  window.location.reload();
-});
 
-function App() {
+function query() {
+  return new URLSearchParams(
+    typeof location === "undefined" ? "" : location.search,
+  );
+}
+
+function initialMaterial(): DemoMaterial {
+  const requested = query().get("material");
+  return (
+    materialItems.find(({ id }) => id === requested)?.id ?? materialItems[0].id
+  );
+}
+
+function App({ ceilings }: { ceilings: RenderCeilings }) {
   const [selected, setSelected] = useState<DemoMaterial>(initialMaterial);
-  const [quality, setQuality] = useState<Quality>("standard");
+  const [quality, setQuality] = useState<RenderQuality>("1080p");
+  const [renderProfile, setRenderProfile] = useState<RenderProfile>();
   const [reducedMotion, setReducedMotion] = useState(() =>
-    Boolean(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches),
+    Boolean(
+      typeof window !== "undefined" &&
+        window.matchMedia?.("(prefers-reduced-motion: reduce)").matches,
+    ),
   );
   const [benchNearViewport, setBenchNearViewport] = useState(() =>
-    query.has("smoke"),
+    query().has("smoke"),
   );
   const [resetKey, setResetKey] = useState(0);
   const [copyStatus, setCopyStatus] = useState("Copy example");
@@ -196,6 +205,8 @@ function App() {
                     item={selectedItem}
                     quality={quality}
                     reducedMotion={reducedMotion}
+                    ceilings={ceilings}
+                    onQualityChange={setRenderProfile}
                   />
                 </Suspense>
               )}
@@ -248,13 +259,20 @@ function App() {
                 <span>Render quality</span>
                 <select
                   value={quality}
-                  onChange={(event) =>
-                    setQuality(event.target.value as Quality)
-                  }
+                  onChange={(event) => {
+                    setRenderProfile(undefined);
+                    setQuality(event.target.value as RenderQuality);
+                  }}
                 >
-                  <option value="low">Low / 180 grass blades</option>
-                  <option value="standard">Standard / 420 grass blades</option>
-                  <option value="high">High / 720 grass blades</option>
+                  <option value="dynamic">
+                    Dynamic / device + active frame load
+                  </option>
+                  {[...resolutionPresets].reverse().map(({ id, height }) => (
+                    <option value={id} key={id}>
+                      {id === "8k" ? "8K" : id === "4k" ? "4K" : id} / {height}p
+                      ceiling
+                    </option>
+                  ))}
                 </select>
               </label>
               <label className="check-field">
@@ -268,7 +286,15 @@ function App() {
               <p
                 className="canvas-status"
                 role="status"
-              >{`${quality} quality · ${reducedMotion ? "reduced motion" : "motion enabled"}`}</p>
+              >{`${quality} requested · ${
+                renderProfile
+                  ? `${renderProfile.effective}${renderProfile.capped ? " capped" : ""} / ${renderProfile.width}×${renderProfile.height}`
+                  : "measuring support"
+              } · ${
+                ceilings.serverCeiling
+                  ? `server ceiling ${ceilings.serverCeiling}`
+                  : "server signal unavailable"
+              } · ${reducedMotion ? "reduced motion" : "motion enabled"}`}</p>
             </aside>
           </div>
         </section>
@@ -365,6 +391,21 @@ function App() {
   );
 }
 
-const root = document.getElementById("root");
-if (!root) throw new Error("Demo root is missing");
-createRoot(root).render(<App />);
+if (typeof document !== "undefined") {
+  const root = document.getElementById("root");
+  if (!root) throw new Error("Demo root is missing");
+  const deploymentCeiling = parseResolution(root.dataset.renderCeiling);
+  const serverCeiling = parseResolution(root.dataset.serverCeiling);
+  const ceilings: RenderCeilings = { deploymentCeiling, serverCeiling };
+  window.addEventListener("vite:preloadError", (event) => {
+    try {
+      if (sessionStorage.getItem(preloadReload)) return;
+      sessionStorage.setItem(preloadReload, "1");
+    } catch {
+      return;
+    }
+    event.preventDefault();
+    window.location.reload();
+  });
+  createRoot(root).render(<App ceilings={ceilings} />);
+}

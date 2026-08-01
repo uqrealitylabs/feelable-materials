@@ -70,12 +70,14 @@ Legacy preset name for shallow-flexing cards, foil, or other thin sheets.
 Small hard-surface response for coated ceramic or metal.
 
 The demo catalogue maps several appearances onto these interaction archetypes:
-orange velvet and satin use `cloth`; silicone uses `rubber`; frosted glass uses
-`glass`; turf uses `grass`; brushed and holographic foil use `mail`; glazed
-ceramic uses `enamel`. This keeps appearance choices out of the physics API.
+orange velvet and satin use `cloth`; silicone and translucent gel use `rubber`;
+frosted glass uses `glass`; turf uses `grass`; brushed and holographic foil use
+`mail`; glazed ceramic and polished jade use `enamel`. This keeps appearance
+choices out of the physics API.
 
 `FeelableSurface` renders preset radius, depth, return, corrected lighting
-normals, and press-only glass roughness marks. `GrassLogoSurface` adds instanced blades. The extra values returned
+normals, and press-only glass roughness marks. `GrassLogoSurface` adds rooted,
+upright, tapered instanced blades. The extra values returned
 by `getMaterialResponse()` are model data for consumer-owned effects; the
 built-in shader does not claim to be a cloth, rubber, or card physics solver.
 
@@ -168,6 +170,13 @@ Run the demo locally with `npm run demo:dev`. A production build is written to
 `demo-dist/` by `npm run demo:build`, and `npm run demo:preview` serves that
 output locally. Velvet and satin add a demo-only, fixed-step PBD cloth grid;
 the solver is intentionally not part of the package API.
+
+Render targets range from 144p through 8K and are clamped to the browser's
+framebuffer limits. Dynamic mode uses device hints and sustained active-frame
+timing. A host may set allow-listed `data-render-ceiling` and
+`data-server-ceiling` values on `#root`; the latter must be a backend decision
+derived from its own load metrics. The static GitHub Pages build has no server
+load signal and says so in the demo.
 
 The GitHub Pages demo is deployed at
 `https://uqrealitylabs.com/feelable-materials/` with

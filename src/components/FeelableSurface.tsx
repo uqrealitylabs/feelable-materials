@@ -77,6 +77,7 @@ FEELABLE_DIRECTION
   if (uFeelableBladeField > 0.5) {
     feelableUv = instanceMatrix[3].xy + 0.5;
     feelableTip = uv.y;
+    transformed.x *= mix(1.0, 0.24, clamp(feelableTip, 0.0, 1.0));
   }
 #endif
 vFeelableUv = feelableUv;

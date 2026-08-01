@@ -2,6 +2,7 @@ import { type ChildProcess, spawn } from "node:child_process";
 import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { resolutionPresets } from "../../../examples/demo/src/render-quality.ts";
 
 const chrome = [
   process.env.CHROME_BIN,
@@ -20,17 +21,21 @@ if (!chrome) {
 const rawBase = process.env.DEMO_BASE_PATH ?? "/";
 const base = rawBase === "/" ? "/" : `/${rawBase.replace(/^\/+|\/+$/g, "")}/`;
 const url = `http://127.0.0.1:4175${base}`;
+const qualityOrder: string[] = resolutionPresets.map(({ id }) => id);
+const minimumColors = 2;
 const framebufferExpression = `new Promise((resolve) => requestAnimationFrame(() => {
   const canvas = document.querySelector("canvas");
   if (!canvas) return resolve(null);
   const gl = canvas.getContext("webgl2") ?? canvas.getContext("webgl");
   if (!gl) return resolve(null);
-  const pixels = new Uint8Array(gl.drawingBufferWidth * gl.drawingBufferHeight * 4);
+  const width = gl.drawingBufferWidth;
+  const height = Math.min(2, gl.drawingBufferHeight);
+  const pixels = new Uint8Array(width * height * 4);
   const priorError = gl.getError();
-  gl.readPixels(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+  gl.readPixels(0, Math.floor((gl.drawingBufferHeight - height) / 2), width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
   const colors = new Set();
   let hash = 2166136261;
-  for (let index = 0; index < pixels.length; index += 16) {
+  for (let index = 0; index < pixels.length; index += 4) {
     const color = (pixels[index] << 16) | (pixels[index + 1] << 8) | pixels[index + 2];
     colors.add(color);
     hash = Math.imul(hash ^ color, 16777619);
@@ -40,6 +45,12 @@ const framebufferExpression = `new Promise((resolve) => requestAnimationFrame(()
     material: canvas.dataset.feelableMaterial ?? "",
     pressure: Number(canvas.dataset.feelablePressure ?? 0),
     calls: Number(canvas.dataset.feelableDraws ?? 0),
+    requested: canvas.dataset.feelableRequested ?? "",
+    resolution: canvas.dataset.feelableResolution ?? "",
+    width: gl.drawingBufferWidth,
+    height: gl.drawingBufferHeight,
+    declaredWidth: Number(canvas.dataset.feelableWidth ?? 0),
+    declaredHeight: Number(canvas.dataset.feelableHeight ?? 0),
     error: priorError || gl.getError(),
     colors: colors.size,
     hash,
@@ -94,8 +105,13 @@ preview.stderr.on("data", (chunk) => {
 try {
   let ready = false;
   for (let attempt = 0; attempt < 40; attempt += 1) {
+    if (preview.exitCode !== null)
+      throw new Error(`demo preview failed\n${output}`);
     try {
-      ready = (await fetch(url, { signal: AbortSignal.timeout(2000) })).ok;
+      ready =
+        output.includes("Local") &&
+        output.includes("http://127.0.0.1:") &&
+        (await fetch(url, { signal: AbortSignal.timeout(2000) })).ok;
     } catch {}
     if (ready) break;
     await new Promise((resolve) => setTimeout(resolve, 250));
@@ -231,6 +247,12 @@ try {
     material: string;
     pressure: number;
     calls: number;
+    requested: string;
+    resolution: string;
+    width: number;
+    height: number;
+    declaredWidth: number;
+    declaredHeight: number;
     error: number;
     colors: number;
     hash: number;
@@ -279,6 +301,16 @@ try {
     throw new Error(`demo catalogue did not render\n${output}`);
   if (new Set(materialIds).size !== materialIds.length)
     throw new Error("demo catalogue IDs must be unique");
+  const qualityOptions = (await call("Runtime.evaluate", {
+    expression:
+      'Array.from(document.querySelectorAll(".control-field select option"), option => option.value)',
+    returnByValue: true,
+  })) as { result?: { value?: string[] } };
+  if (
+    qualityOptions.result?.value?.join(",") !==
+    ["dynamic", ...[...qualityOrder].reverse()].join(",")
+  )
+    throw new Error("render quality options are incomplete or unordered");
 
   const primaryMaterial = materialIds[0] as string;
   const cases = [
@@ -315,7 +347,10 @@ try {
         fromPage(sample, caseUrl) &&
         sample.material === materialId &&
         sample.error === 0 &&
-        sample.colors >= 4 &&
+        sample.requested === "1080p" &&
+        sample.width === sample.declaredWidth &&
+        sample.height === sample.declaredHeight &&
+        sample.colors >= minimumColors &&
         sample.calls > 0 &&
         sample.calls <= 3
       ) {
@@ -356,7 +391,7 @@ try {
     }
     if (
       touched?.error !== 0 ||
-      touched.colors < 4 ||
+      touched.colors < minimumColors ||
       touched.calls < 1 ||
       touched.calls > 3
     )
@@ -396,6 +431,107 @@ try {
     const status = `pass:${caseId}:${touched.calls}:${touched.colors}:${touched.pressure.toFixed(2)}`;
     results.push(status);
   }
+  const adaptiveUrl = `${url}?smoke&material=${primaryMaterial}#bench`;
+  await call("Page.navigate", { url: adaptiveUrl });
+  const selectQuality = async (quality: string) => {
+    for (let attempt = 0; attempt < 80; attempt += 1) {
+      const selected = (await call("Runtime.evaluate", {
+        expression: `(() => {
+          if (location.href !== ${JSON.stringify(adaptiveUrl)}) return false;
+          const select = document.querySelector(".control-field select");
+          if (!select) return false;
+          select.value = ${JSON.stringify(quality)};
+          select.dispatchEvent(new Event("change", { bubbles: true }));
+          return true;
+        })()`,
+        returnByValue: true,
+      })) as { result?: { value?: boolean } };
+      if (selected.result?.value) return;
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    throw new Error("render quality control did not render");
+  };
+  for (const preset of resolutionPresets) {
+    await selectQuality(preset.id);
+    let applied: FrameSample | null = null;
+    let lastSample: FrameSample | null = null;
+    for (let attempt = 0; attempt < 80; attempt += 1) {
+      const sample = await sampleFramebuffer();
+      lastSample = sample;
+      if (
+        fromPage(sample, adaptiveUrl) &&
+        sample.requested === preset.id &&
+        qualityOrder.includes(sample.resolution) &&
+        qualityOrder.indexOf(sample.resolution) <=
+          qualityOrder.indexOf(preset.id) &&
+        sample.width === sample.declaredWidth &&
+        sample.height === sample.declaredHeight &&
+        sample.width <= preset.width &&
+        sample.height <= preset.height &&
+        sample.error === 0 &&
+        sample.colors >= minimumColors
+      ) {
+        applied = sample;
+        break;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    if (!applied)
+      throw new Error(
+        `${preset.id} framebuffer ceiling was not applied (${JSON.stringify(lastSample)})`,
+      );
+    results.push(
+      `pass:quality:${preset.id}:${applied.resolution}:${applied.width}x${applied.height}`,
+    );
+  }
+  await selectQuality("dynamic");
+  let adaptiveStart = "";
+  for (let attempt = 0; attempt < 80; attempt += 1) {
+    const sample = await sampleFramebuffer();
+    if (
+      fromPage(sample, adaptiveUrl) &&
+      sample.requested === "dynamic" &&
+      qualityOrder.includes(sample.resolution)
+    ) {
+      adaptiveStart = sample.resolution;
+      break;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  if (!adaptiveStart) throw new Error("dynamic quality did not initialize");
+  await call("Runtime.evaluate", {
+    expression: `new Promise((resolve) => {
+      let frames = 5;
+      const burn = () => {
+        if (frames-- <= 0) return requestAnimationFrame(() => resolve());
+        const end = performance.now() + 275;
+        while (performance.now() < end) {}
+        requestAnimationFrame(burn);
+      };
+      requestAnimationFrame(burn);
+    })`,
+    awaitPromise: true,
+  });
+  const adaptiveSample = await sampleFramebuffer();
+  const adaptiveEnd = adaptiveSample?.resolution ?? adaptiveStart;
+  const adaptivePreset = resolutionPresets.find(({ id }) => id === adaptiveEnd);
+  if (
+    !fromPage(adaptiveSample, adaptiveUrl) ||
+    adaptiveSample.requested !== "dynamic" ||
+    !adaptivePreset ||
+    adaptiveSample.width !== adaptiveSample.declaredWidth ||
+    adaptiveSample.height !== adaptiveSample.declaredHeight ||
+    adaptiveSample.width > adaptivePreset.width ||
+    adaptiveSample.height > adaptivePreset.height ||
+    adaptiveSample.error !== 0 ||
+    adaptiveSample.colors < minimumColors ||
+    (adaptiveStart !== "144p" &&
+      qualityOrder.indexOf(adaptiveEnd) >= qualityOrder.indexOf(adaptiveStart))
+  )
+    throw new Error(
+      `dynamic quality did not settle below ${adaptiveStart} (${JSON.stringify(adaptiveSample)})`,
+    );
+  results.push(`pass:quality:dynamic:${adaptiveStart}->${adaptiveEnd}`);
   const productionUrl = `${url}?material=${primaryMaterial}#bench`;
   await call("Page.navigate", { url: productionUrl });
   let productionBaseline: FrameSample | null = null;
@@ -407,7 +543,10 @@ try {
     if (
       fromPage(sample, productionUrl) &&
       sample.error === 0 &&
-      sample.colors >= 4
+      sample.requested === "1080p" &&
+      sample.width === sample.declaredWidth &&
+      sample.height === sample.declaredHeight &&
+      sample.colors >= minimumColors
     ) {
       productionBaseline = sample;
       break;
@@ -444,7 +583,13 @@ try {
     if (
       fromPage(sample, productionUrl) &&
       sample.error === 0 &&
-      sample.colors >= 4
+      sample.requested === productionBaseline.requested &&
+      sample.resolution === productionBaseline.resolution &&
+      sample.width === productionBaseline.width &&
+      sample.height === productionBaseline.height &&
+      sample.width === sample.declaredWidth &&
+      sample.height === sample.declaredHeight &&
+      sample.colors >= minimumColors
     ) {
       contextRestored = true;
       break;

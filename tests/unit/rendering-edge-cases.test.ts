@@ -302,34 +302,98 @@ describe("bounded grass generation", () => {
     });
   });
 
-  it("writes distinct instance transforms", () => {
-    let values: number[] = [];
-    const matrices: number[][] = [];
-    const matrix = {
-      set: (...next: number[]) => {
-        values = next;
-        return matrix;
-      },
-    };
-    const mesh = {
-      count: 0,
-      matrix: { clone: () => matrix },
-      instanceMatrix: { needsUpdate: false },
-      setMatrixAt: (index: number) => {
-        matrices[index] = [...values];
-      },
-    };
-    const blades = createGrassBladeInstances({ count: 3, seed: 9 });
+  it.each([1, 9, 17])(
+    "writes rooted upright transforms for seed %i",
+    (seed) => {
+      let values: number[] = [];
+      const matrices: number[][] = [];
+      const matrix = {
+        set: (...next: number[]) => {
+          values = next;
+          return matrix;
+        },
+      };
+      const mesh = {
+        count: 0,
+        matrix: { clone: () => matrix },
+        instanceMatrix: { needsUpdate: false },
+        setMatrixAt: (index: number) => {
+          matrices[index] = [...values];
+        },
+      };
+      const blades = createGrassBladeInstances({ count: 64, seed });
 
-    applyGrassBladeMatrices(mesh, blades);
+      applyGrassBladeMatrices(mesh, blades);
 
-    expect(mesh.count).toBe(3);
-    expect(mesh.instanceMatrix.needsUpdate).toBe(true);
-    expect(matrices).toHaveLength(3);
-    expect(matrices[0]).not.toEqual(matrices[1]);
-    expect(matrices[0]?.[3]).toBeCloseTo((blades[0]?.x ?? 0) - 0.5);
-    expect(matrices[0]?.[7]).toBeCloseTo((blades[0]?.y ?? 0) - 0.5);
-  });
+      expect(mesh.count).toBe(64);
+      expect(mesh.instanceMatrix.needsUpdate).toBe(true);
+      expect(matrices).toHaveLength(64);
+      expect(matrices[0]).not.toEqual(matrices[1]);
+      expect(matrices[0]?.[3]).toBeCloseTo((blades[0]?.x ?? 0) - 0.5);
+      expect(matrices[0]?.[7]).toBeCloseTo((blades[0]?.y ?? 0) - 0.5);
+      for (const [index, matrixValues] of matrices.entries()) {
+        const blade = blades[index];
+        expect(matrixValues.every(Number.isFinite)).toBe(true);
+        expect(matrixValues[11] - (matrixValues[9] ?? 0) / 2).toBeCloseTo(0);
+        expect(matrixValues[11] + (matrixValues[9] ?? 0) / 2).toBeCloseTo(
+          blade?.height ?? 0,
+        );
+        expect(matrixValues[8]).toBe(0);
+        expect(
+          Math.hypot(matrixValues[2] ?? 0, matrixValues[6] ?? 0),
+        ).toBeCloseTo(1.2 - (blade?.stiffness ?? 0));
+        expect(
+          (matrixValues[9] ?? 0) *
+            ((matrixValues[2] ?? 0) * (matrixValues[4] ?? 0) -
+              (matrixValues[0] ?? 0) * (matrixValues[6] ?? 0)),
+        ).toBeGreaterThan(0);
+      }
+      expect(
+        new Set(
+          blades.map(({ angle }) =>
+            angle < -Math.PI / 2
+              ? 0
+              : angle < 0
+                ? 1
+                : angle < Math.PI / 2
+                  ? 2
+                  : 3,
+          ),
+        ).size,
+      ).toBe(4);
+    },
+  );
+
+  it.each([180, 420, 720])(
+    "keeps every %i-blade footprint inside its field",
+    (count) => {
+      const mask = (x: number, y: number) =>
+        x > 0.04 && x < 0.96 && y > 0.08 && y < 0.92;
+      for (const seed of [1, 9, 17, Number.MAX_SAFE_INTEGER])
+        for (const fieldMask of [undefined, mask]) {
+          const blades = createGrassBladeInstances({
+            count,
+            seed,
+            mask: fieldMask,
+          });
+          const contains =
+            fieldMask ??
+            ((x: number, y: number) => x >= 0 && x <= 1 && y >= 0 && y <= 1);
+          expect(blades).toHaveLength(count);
+          expect(
+            blades.every(({ x, y, width, angle }) => {
+              const dx = (Math.cos(angle) * width) / 2;
+              const dy = (Math.sin(angle) * width) / 2;
+              return (
+                contains(x, y) &&
+                contains(x - dx, y - dy) &&
+                contains(x + dx, y + dy)
+              );
+            }),
+          ).toBe(true);
+        }
+    },
+  );
 });
 
 describe("browser adapter correctness", () => {
@@ -653,6 +717,7 @@ describe("actual render adapters", () => {
       });
       expect(shader.vertexShader).toContain("instanceMatrix[3].xy");
       expect(shader.vertexShader).toContain("uFeelableBladeField > 0.5");
+      expect(shader.vertexShader).toContain("mix(1.0, 0.24");
       expect(shader.vertexShader).toContain(
         "transformed -= normalize(feelableDirection) *",
       );

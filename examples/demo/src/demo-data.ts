@@ -1,14 +1,6 @@
 import type { MeshPhysicalMaterialParameters } from "three";
 import type { MaterialKind } from "../../../dist/index.js";
 
-export type Quality = "low" | "standard" | "high";
-
-export const qualityCounts: Record<Quality, number> = {
-  low: 180,
-  standard: 420,
-  high: 720,
-};
-
 export const materialItems = [
   {
     id: "velvet",
@@ -46,6 +38,23 @@ export const materialItems = [
     finish: { color: "#ff7168", roughness: 0.55 },
   },
   {
+    id: "gel",
+    material: "rubber",
+    label: "Translucent gel",
+    detail: "soft return + coloured transmission",
+    finish: {
+      color: "#ff8b69",
+      roughness: 0.16,
+      transmission: 0.72,
+      thickness: 1.2,
+      ior: 1.42,
+      attenuationColor: "#ff4c56",
+      attenuationDistance: 1.4,
+      clearcoat: 0.35,
+      clearcoatRoughness: 0.12,
+    },
+  },
+  {
     id: "glass",
     material: "glass",
     label: "Frosted glass",
@@ -61,8 +70,8 @@ export const materialItems = [
     id: "turf",
     material: "grass",
     label: "Turf",
-    detail: "masked instanced blade field",
-    finish: { color: "#a7d88b", roughness: 0.72 },
+    detail: "rooted tapered blade field",
+    finish: { color: "#4f9548", roughness: 0.88 },
   },
   {
     id: "aluminium",
@@ -86,6 +95,23 @@ export const materialItems = [
       roughness: 0.42,
       clearcoat: 1,
       clearcoatRoughness: 0.08,
+    },
+  },
+  {
+    id: "jade",
+    material: "enamel",
+    label: "Polished jade",
+    detail: "hard contact + subsurface colour",
+    finish: {
+      color: "#5ea77b",
+      roughness: 0.24,
+      transmission: 0.32,
+      thickness: 1.6,
+      ior: 1.61,
+      attenuationColor: "#176344",
+      attenuationDistance: 0.55,
+      clearcoat: 0.55,
+      clearcoatRoughness: 0.1,
     },
   },
   {

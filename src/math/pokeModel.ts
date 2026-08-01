@@ -248,16 +248,26 @@ export function createGrassBladeInstances(options: GrassBladeOptions = {}) {
     const y = seededUnit(seed, attempt, 37);
     attempt += 1;
 
-    if (options.mask && !options.mask(x, y)) continue;
-
-    blades.push({
+    const blade = {
       x,
       y,
       height: 0.38 + seededUnit(seed, attempt, 71) * 0.5,
       width: 0.012 + seededUnit(seed, attempt, 89) * 0.02,
-      angle: -0.6 + seededUnit(seed, attempt, 113) * 1.2,
+      angle: -Math.PI + seededUnit(seed, attempt, 113) * Math.PI * 2,
       stiffness: 0.45 + seededUnit(seed, attempt, 131) * 0.45,
-    });
+    };
+    const dx = (Math.cos(blade.angle) * blade.width) / 2;
+    const dy = (Math.sin(blade.angle) * blade.width) / 2;
+    if (
+      Math.abs(x - 0.5) + Math.abs(dx) > 0.5 ||
+      Math.abs(y - 0.5) + Math.abs(dy) > 0.5 ||
+      (options.mask &&
+        (!options.mask(x, y) ||
+          !options.mask(x - dx, y - dy) ||
+          !options.mask(x + dx, y + dy)))
+    )
+      continue;
+    blades.push(blade);
   }
 
   return blades;

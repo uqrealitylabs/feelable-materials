@@ -38,19 +38,20 @@ export function applyGrassBladeMatrices(
   blades.forEach((blade, index) => {
     const cos = Math.cos(blade.angle);
     const sin = Math.sin(blade.angle);
+    const flex = 1.2 - blade.stiffness;
     matrix.set(
       cos * blade.width,
-      -sin * blade.height,
       0,
+      sin * flex,
       blade.x - 0.5,
       sin * blade.width,
-      cos * blade.height,
       0,
+      -cos * flex,
       blade.y - 0.5,
       0,
+      blade.height,
       0,
-      1,
-      0,
+      blade.height / 2,
       0,
       0,
       0,
