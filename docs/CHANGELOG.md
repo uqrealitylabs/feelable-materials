@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.1.0](https://github.com/uqrealitylabs/feelable-materials/compare/v1.0.1...v1.1.0) (2026-08-01)
+
+
+### Features
+
+* improve render fidelity and adaptive quality ([d888875](https://github.com/uqrealitylabs/feelable-materials/commit/d88887508dca733917d15998d28ce858584ebca8))
+
+
+### Bug Fixes
+
+* reveal rooted turf blades ([44852a7](https://github.com/uqrealitylabs/feelable-materials/commit/44852a793b722a3eb58be8bb662aa32dba0ed1f0))
+
 ## [1.0.1](https://github.com/uqrealitylabs/feelable-materials/compare/v1.0.0...v1.0.1) (2026-08-01)
 
 
