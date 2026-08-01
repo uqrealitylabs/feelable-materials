@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.1](https://github.com/uqrealitylabs/feelable-materials/compare/v1.0.0...v1.0.1) (2026-08-01)
+
+
+### Bug Fixes
+
+* correct npm bootstrap guidance ([8305159](https://github.com/uqrealitylabs/feelable-materials/commit/8305159235f3b25b85251873957f042173f8dc89))
+
 ## [1.0.0](https://github.com/uqrealitylabs/feelable-materials/compare/v0.3.0...v1.0.0) (2026-08-01)
 
 
