@@ -1,3 +1,5 @@
+import { fitPixelRatio } from "@uqrealitylabs/sauron";
+
 export const resolutionPresets = [
   { id: "144p", width: 256, height: 144 },
   { id: "240p", width: 426, height: 240 },
@@ -132,13 +134,13 @@ export function resolveRenderProfile(
   const maxWidth = finitePositive(limits.maxWidth, 1);
   const maxHeight = finitePositive(limits.maxHeight, 1);
   const maxPixels = finitePositive(limits.maxPixels, 1);
-  const dpr = Math.min(
+  const maxDpr = Math.min(
     target.width / cssWidth,
     target.height / cssHeight,
     maxWidth / cssWidth,
     maxHeight / cssHeight,
-    Math.sqrt(maxPixels / (cssWidth * cssHeight)),
   );
+  const dpr = fitPixelRatio(cssWidth, cssHeight, maxPixels, maxDpr);
   return {
     effective,
     dpr,

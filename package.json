@@ -6,6 +6,9 @@
   "sideEffects": false,
   "license": "GPL-3.0-only",
   "packageManager": "npm@11.12.1",
+  "allowScripts": {
+    "github:keys-i/sauron#600c0e0271224a9d13a14c1d5ca8c9df3b991841": true
+  },
   "files": [
     "dist",
     "README.md",
@@ -75,6 +78,7 @@
   "devDependencies": {
     "@biomejs/biome": "^2.5.4",
     "@react-three/fiber": "^9.4.0",
+    "@uqrealitylabs/sauron": "git+https://github.com/keys-i/sauron.git#600c0e0271224a9d13a14c1d5ca8c9df3b991841",
     "@types/node": "^26.1.1",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
